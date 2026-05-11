@@ -1,0 +1,112 @@
+import { NavLink, useLocation } from "react-router-dom";
+
+import { permissions } from "@/constants/permissions";
+import { navItems } from "@/constants/navigation";
+import { useAuth } from "@/features/auth/use-auth";
+import { cn } from "@/lib/utils";
+
+type SidebarProps = {
+  onNavigate?: () => void;
+};
+
+export function Sidebar({ onNavigate }: SidebarProps) {
+  const { user } = useAuth();
+  const location = useLocation();
+
+  const isEmployeeSelfService =
+    Boolean(user?.employeeId) &&
+    !user?.permissions.includes(permissions.employeesUpdate) &&
+    !user?.permissions.includes(permissions.attendanceImport);
+  const visibleItems = navItems.filter((item) => {
+    if (!user?.permissions.includes(item.permission)) {
+      return false;
+    }
+
+    if (isEmployeeSelfService && ["/employees", "/organization"].includes(item.path)) {
+      return false;
+    }
+
+    return true;
+  });
+
+  return (
+    <aside className="flex h-full w-[16.5rem] flex-col bg-card">
+      {/* Brand */}
+      <div className="flex items-center gap-3 px-5 py-5">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20">
+          <span className="text-lg font-bold leading-none">D</span>
+        </div>
+        <div>
+          <div className="text-[15px] font-bold tracking-tight text-card-foreground">
+            Dela Embroidery
+          </div>
+          <div className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+            Hệ thống nhân sự
+          </div>
+        </div>
+      </div>
+
+      {/* Separator */}
+      <div className="mx-4 h-px bg-border" />
+
+      {/* Section Label */}
+      <div className="px-5 pt-5 pb-2">
+        <span className="text-[10px] font-semibold tracking-widest text-muted-foreground uppercase">
+          Menu chính
+        </span>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-4">
+        {visibleItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = location.pathname === item.path || (item.path !== "/" && location.pathname.startsWith(item.path));
+          return (
+            <NavLink
+              className={cn(
+                "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-all duration-200",
+                isActive
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
+              key={item.path}
+              to={item.path}
+              onClick={onNavigate}
+            >
+              {/* Active indicator bar */}
+              {isActive && (
+                <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-primary" />
+              )}
+              <Icon
+                className={cn(
+                  "shrink-0 transition-colors",
+                  isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground",
+                )}
+                size={18}
+                strokeWidth={isActive ? 2.2 : 1.8}
+              />
+              {item.label}
+            </NavLink>
+          );
+        })}
+      </nav>
+
+      {/* Bottom: User info */}
+      <div className="mx-3 mb-3 rounded-lg border border-border bg-muted/50 p-3">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-[12px] font-bold text-primary">
+            {user?.fullName?.charAt(0)?.toUpperCase() ?? "U"}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-xs font-semibold text-card-foreground">
+              {user?.fullName}
+            </div>
+            <div className="truncate text-[10px] text-muted-foreground">
+              {user?.loginCode}
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
