@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
+import logo from "@/assets/logo.png";
 
 import { permissions } from "@/constants/permissions";
 import { navItems } from "@/constants/navigation";
@@ -32,9 +33,9 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   return (
     <aside className="flex h-full w-[16.5rem] flex-col bg-card">
       {/* Brand */}
-      <div className="flex items-center gap-3 px-5 py-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20">
-          <span className="text-lg font-bold leading-none">D</span>
+      <div className="flex flex-col gap-4 px-5 py-6">
+        <div className="flex h-12 w-full items-center justify-start overflow-hidden rounded-lg bg-white p-2 shadow-sm ring-1 ring-border/50">
+          <img alt="Dela Embroidery" className="h-full w-auto object-contain" src={logo} />
         </div>
         <div>
           <div className="text-[15px] font-bold tracking-tight text-card-foreground">
@@ -60,7 +61,15 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-4">
         {visibleItems.map((item) => {
           const Icon = item.icon;
-          const isActive = location.pathname === item.path || (item.path !== "/" && location.pathname.startsWith(item.path));
+          const isExactMatch = location.pathname === item.path;
+          const isParentMatch = item.path !== "/" && location.pathname.startsWith(item.path + "/");
+          
+          // An item is active if it's an exact match, 
+          // or if it's a parent match and no other visible item is a better match
+          const isActive = isExactMatch || (isParentMatch && !visibleItems.some(
+            other => other.path !== item.path && location.pathname.startsWith(other.path) && other.path.length > item.path.length
+          ));
+          
           return (
             <NavLink
               className={cn(

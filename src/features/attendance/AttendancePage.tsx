@@ -12,6 +12,10 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { RequirePermission } from "@/components/common/RequirePermission";
 import { AppMonthPicker } from "@/components/form/AppMonthPicker";
 import { permissions } from "@/constants/permissions";
+import {
+  attendanceEmployeeViewColumns,
+  type AttendanceEmployeeViewColumn,
+} from "@/features/employee-view-settings/employee-view-settings.types";
 import { usePermission } from "@/hooks/use-permission";
 import { showApiError, showSuccess } from "@/lib/toast";
 
@@ -32,23 +36,23 @@ const statusLabel = {
 
 type AttendanceEmployeeGroup = {
   employeeId: string;
-  employeeCode: string;
-  employeeName: string;
+  employeeCode?: string;
+  employeeName?: string;
   rows: AttendanceSummaryRow[];
   workDay: number;
   lateMinutes: number;
   earlyLeaveMinutes: number;
   overtimeMinutes: number;
-  status: AttendanceSummaryRow["status"];
+  status?: AttendanceSummaryRow["status"];
 };
 
 type AttendanceEditRow = UpdateAttendanceSummaryRowInput & {
-  workDate: string;
+  workDate?: string;
   workDay: number;
   lateMinutes: number;
   earlyLeaveMinutes: number;
   overtimeMinutes: number;
-  status: AttendanceSummaryRow["status"];
+  status?: AttendanceSummaryRow["status"];
 };
 
 type AttendanceStatusFilter = "all" | AttendanceSummaryRow["status"];
@@ -70,6 +74,11 @@ export function AttendancePage() {
     queryKey: ["attendance", month, year],
     queryFn: () => getAttendance(month, year),
   });
+  const visibleColumns = useMemo(
+    () => attendanceQuery.data?.visibleColumns ?? [...attendanceEmployeeViewColumns],
+    [attendanceQuery.data?.visibleColumns],
+  );
+  const visibleColumnSet = useMemo(() => new Set(visibleColumns), [visibleColumns]);
 
   const updateMutation = useMutation({
     mutationFn: updateAttendanceSummaries,
@@ -95,7 +104,7 @@ export function AttendancePage() {
       const matchesStatus = statusFilter === "all" || group.status === statusFilter;
       const matchesKeyword =
         searchText.length === 0 ||
-        normalizeSearchText(`${group.employeeCode} ${group.employeeName}`).includes(searchText);
+        normalizeSearchText(`${group.employeeCode ?? ""} ${group.employeeName ?? ""}`).includes(searchText);
 
       return matchesStatus && matchesKeyword;
     });
@@ -201,9 +210,15 @@ export function AttendancePage() {
 
         <div className="grid border-t border-border md:grid-cols-4">
           <Metric icon={Users} label="Nhân viên" value={filteredTotals.employeeCount} />
-          <Metric icon={CalendarDays} label="Ngày công" value={formatNumber(filteredTotals.workDay)} />
-          <Metric icon={Clock} label="Phút đi trễ" value={formatNumber(filteredTotals.lateMinutes)} />
-          <Metric icon={Timer} label="Phút tăng ca" value={formatNumber(filteredTotals.overtimeMinutes)} />
+          {visibleColumnSet.has("workDay") ? (
+            <Metric icon={CalendarDays} label="Ngày công" value={formatNumber(filteredTotals.workDay)} />
+          ) : null}
+          {visibleColumnSet.has("lateMinutes") ? (
+            <Metric icon={Clock} label="Phút đi trễ" value={formatNumber(filteredTotals.lateMinutes)} />
+          ) : null}
+          {visibleColumnSet.has("overtimeMinutes") ? (
+            <Metric icon={Timer} label="Phút tăng ca" value={formatNumber(filteredTotals.overtimeMinutes)} />
+          ) : null}
         </div>
       </section>
 
@@ -222,7 +237,11 @@ export function AttendancePage() {
         />
       ) : null}
       {!attendanceQuery.isLoading && !attendanceQuery.isError && filteredGroups.length > 0 ? (
-        <AttendanceGroupedTable groups={filteredGroups} onOpenEmployee={setSelectedEmployeeId} />
+        <AttendanceGroupedTable
+          groups={filteredGroups}
+          visibleColumns={visibleColumns}
+          onOpenEmployee={setSelectedEmployeeId}
+        />
       ) : null}
 
       {selectedGroup ? (
@@ -231,6 +250,7 @@ export function AttendancePage() {
           group={selectedGroup}
           isSaving={updateMutation.isPending}
           key={selectedGroup.employeeId}
+          visibleColumns={visibleColumns}
           onClose={() => setSelectedEmployeeId(null)}
           onSave={(rows) => updateMutation.mutate(rows)}
         />
@@ -263,50 +283,71 @@ function Metric({
 
 function AttendanceGroupedTable({
   groups,
+  visibleColumns,
   onOpenEmployee,
 }: {
   groups: AttendanceEmployeeGroup[];
+  visibleColumns: AttendanceEmployeeViewColumn[];
   onOpenEmployee: (employeeId: string) => void;
 }) {
+  const visibleColumnSet = new Set(visibleColumns);
+  const show = (column: AttendanceEmployeeViewColumn) => visibleColumnSet.has(column);
+
   return (
     <div className="w-full max-w-full overflow-hidden rounded-md border border-border bg-card">
       <div className="scrollbar-none max-h-[72vh] overflow-auto">
         <table className="min-w-full border-collapse text-left text-sm">
           <thead className="sticky top-0 z-10 bg-muted text-xs uppercase text-muted-foreground">
             <tr>
-              <th className="whitespace-nowrap px-4 py-3 font-semibold">Mã NV</th>
-              <th className="whitespace-nowrap px-4 py-3 font-semibold">Nhân viên</th>
+              {show("employeeCode") ? <th className="whitespace-nowrap px-4 py-3 font-semibold">Mã NV</th> : null}
+              {show("employeeName") ? <th className="whitespace-nowrap px-4 py-3 font-semibold">Nhân viên</th> : null}
               <th className="whitespace-nowrap px-4 py-3 font-semibold">Số ngày</th>
-              <th className="whitespace-nowrap px-4 py-3 font-semibold">Ngày công</th>
-              <th className="whitespace-nowrap px-4 py-3 font-semibold">Đi trễ</th>
-              <th className="whitespace-nowrap px-4 py-3 font-semibold">Về sớm</th>
-              <th className="whitespace-nowrap px-4 py-3 font-semibold">Tăng ca</th>
-              <th className="whitespace-nowrap px-4 py-3 font-semibold">Trạng thái</th>
+              {show("workDay") ? <th className="whitespace-nowrap px-4 py-3 font-semibold">Ngày công</th> : null}
+              {show("lateMinutes") ? <th className="whitespace-nowrap px-4 py-3 font-semibold">Đi trễ</th> : null}
+              {show("earlyLeaveMinutes") ? <th className="whitespace-nowrap px-4 py-3 font-semibold">Về sớm</th> : null}
+              {show("overtimeMinutes") ? <th className="whitespace-nowrap px-4 py-3 font-semibold">Tăng ca</th> : null}
+              {show("status") ? <th className="whitespace-nowrap px-4 py-3 font-semibold">Trạng thái</th> : null}
               <th className="whitespace-nowrap px-4 py-3 font-semibold">Chi tiết</th>
             </tr>
           </thead>
           <tbody>
             {groups.map((group) => (
               <tr className="border-t border-border" key={group.employeeId}>
-                <td className="whitespace-nowrap px-4 py-3 text-card-foreground">{group.employeeCode}</td>
-                <td className="whitespace-nowrap px-4 py-3 font-medium text-card-foreground">{group.employeeName}</td>
+                {show("employeeCode") ? (
+                  <td className="whitespace-nowrap px-4 py-3 text-card-foreground">{group.employeeCode}</td>
+                ) : null}
+                {show("employeeName") ? (
+                  <td className="whitespace-nowrap px-4 py-3 font-medium text-card-foreground">
+                    {group.employeeName}
+                  </td>
+                ) : null}
                 <td className="whitespace-nowrap px-4 py-3 text-card-foreground">{group.rows.length}</td>
-                <td className="whitespace-nowrap px-4 py-3 text-card-foreground">{formatNumber(group.workDay)}</td>
-                <td className="whitespace-nowrap px-4 py-3 text-card-foreground">
-                  {formatMinutesText(group.lateMinutes)}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-card-foreground">
-                  {formatMinutesText(group.earlyLeaveMinutes)}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-card-foreground">
-                  {formatMinutesText(group.overtimeMinutes)}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-card-foreground">
-                  <Badge tone={statusTone[group.status]}>{statusLabel[group.status]}</Badge>
-                </td>
+                {show("workDay") ? (
+                  <td className="whitespace-nowrap px-4 py-3 text-card-foreground">{formatNumber(group.workDay)}</td>
+                ) : null}
+                {show("lateMinutes") ? (
+                  <td className="whitespace-nowrap px-4 py-3 text-card-foreground">
+                    {formatMinutesText(group.lateMinutes)}
+                  </td>
+                ) : null}
+                {show("earlyLeaveMinutes") ? (
+                  <td className="whitespace-nowrap px-4 py-3 text-card-foreground">
+                    {formatMinutesText(group.earlyLeaveMinutes)}
+                  </td>
+                ) : null}
+                {show("overtimeMinutes") ? (
+                  <td className="whitespace-nowrap px-4 py-3 text-card-foreground">
+                    {formatMinutesText(group.overtimeMinutes)}
+                  </td>
+                ) : null}
+                {show("status") ? (
+                  <td className="whitespace-nowrap px-4 py-3 text-card-foreground">
+                    {group.status ? <Badge tone={statusTone[group.status]}>{statusLabel[group.status]}</Badge> : "-"}
+                  </td>
+                ) : null}
                 <td className="whitespace-nowrap px-4 py-3 text-card-foreground">
                   <Button
-                    aria-label={`Xem chi tiết ${group.employeeName}`}
+                    aria-label={`Xem chi tiết ${group.employeeName ?? group.employeeId}`}
                     className="h-8 px-3"
                     variant="secondary"
                     onClick={() => onOpenEmployee(group.employeeId)}
@@ -328,15 +369,19 @@ function AttendanceDetailModal({
   group,
   canEdit,
   isSaving,
+  visibleColumns,
   onClose,
   onSave,
 }: {
   group: AttendanceEmployeeGroup;
   canEdit: boolean;
   isSaving: boolean;
+  visibleColumns: AttendanceEmployeeViewColumn[];
   onClose: () => void;
   onSave: (rows: UpdateAttendanceSummaryRowInput[]) => void;
 }) {
+  const visibleColumnSet = new Set(visibleColumns);
+  const show = (column: AttendanceEmployeeViewColumn) => visibleColumnSet.has(column);
   const [draftRows, setDraftRows] = useState<AttendanceEditRow[]>(() => group.rows.map(toEditRow));
 
   const handleChange = (id: string, key: keyof UpdateAttendanceSummaryRowInput, value: string) => {
@@ -353,6 +398,8 @@ function AttendanceDetailModal({
         morningCheckOut: row.morningCheckOut,
         afternoonCheckIn: row.afternoonCheckIn,
         afternoonCheckOut: row.afternoonCheckOut,
+        nightCheckIn: row.nightCheckIn,
+        nightCheckOut: row.nightCheckOut,
       })),
     );
   };
@@ -367,7 +414,9 @@ function AttendanceDetailModal({
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div>
             <h2 className="text-base font-semibold text-card-foreground">
-              Chi tiết công - {group.employeeCode} - {group.employeeName}
+              Chi tiết công
+              {show("employeeCode") && group.employeeCode ? ` - ${group.employeeCode}` : ""}
+              {show("employeeName") && group.employeeName ? ` - ${group.employeeName}` : ""}
             </h2>
             <div className="mt-1 text-sm text-muted-foreground">
               {group.rows.length} ngày, {formatNumber(group.workDay)} ngày công, {formatMinutesText(group.lateMinutes)} đi trễ
@@ -384,66 +433,106 @@ function AttendanceDetailModal({
               Bạn chỉ có quyền xem chi tiết công.
             </div>
           ) : null}
-          <table className="min-w-full border-collapse text-left text-xs">
+          <table className="min-w-[1120px] border-collapse text-left text-xs">
             <thead className="sticky top-0 z-10 bg-muted text-muted-foreground">
               <tr>
-                <th className="whitespace-nowrap px-3 py-2 font-semibold">Ngày</th>
-                <th className="whitespace-nowrap px-3 py-2 font-semibold">Ca 1 vào</th>
-                <th className="whitespace-nowrap px-3 py-2 font-semibold">Ca 1 ra</th>
-                <th className="whitespace-nowrap px-3 py-2 font-semibold">Ca 2 vào</th>
-                <th className="whitespace-nowrap px-3 py-2 font-semibold">Ca 2 ra</th>
-                <th className="whitespace-nowrap px-3 py-2 font-semibold">Ngày công</th>
-                <th className="whitespace-nowrap px-3 py-2 font-semibold">Đi trễ</th>
-                <th className="whitespace-nowrap px-3 py-2 font-semibold">Về sớm</th>
-                <th className="whitespace-nowrap px-3 py-2 font-semibold">Tăng ca</th>
-                <th className="whitespace-nowrap px-3 py-2 font-semibold">Trạng thái</th>
+                {show("workDate") ? <th className="whitespace-nowrap px-3 py-2 font-semibold">Ngày</th> : null}
+                {show("morningCheckInAt") ? <th className="whitespace-nowrap px-3 py-2 font-semibold">Ca 1 vào</th> : null}
+                {show("morningCheckOutAt") ? <th className="whitespace-nowrap px-3 py-2 font-semibold">Ca 1 ra</th> : null}
+                {show("afternoonCheckInAt") ? <th className="whitespace-nowrap px-3 py-2 font-semibold">Ca 2 vào</th> : null}
+                {show("afternoonCheckOutAt") ? <th className="whitespace-nowrap px-3 py-2 font-semibold">Ca 2 ra</th> : null}
+                {show("nightCheckInAt") ? <th className="whitespace-nowrap px-3 py-2 font-semibold">Ca tối vào</th> : null}
+                {show("nightCheckOutAt") ? <th className="whitespace-nowrap px-3 py-2 font-semibold">Ca tối ra</th> : null}
+                {show("workDay") ? <th className="whitespace-nowrap px-3 py-2 font-semibold">Ngày công</th> : null}
+                {show("lateMinutes") ? <th className="whitespace-nowrap px-3 py-2 font-semibold">Đi trễ</th> : null}
+                {show("earlyLeaveMinutes") ? <th className="whitespace-nowrap px-3 py-2 font-semibold">Về sớm</th> : null}
+                {show("overtimeMinutes") ? <th className="whitespace-nowrap px-3 py-2 font-semibold">Tăng ca</th> : null}
+                {show("status") ? <th className="whitespace-nowrap px-3 py-2 font-semibold">Trạng thái</th> : null}
               </tr>
             </thead>
             <tbody>
               {draftRows.map((row) => (
                 <tr className="border-t border-border" key={row.id}>
-                  <td className="whitespace-nowrap px-3 py-2 text-card-foreground">{row.workDate}</td>
-                  <td className="whitespace-nowrap px-3 py-2">
+                  {show("workDate") ? (
+                    <td className="whitespace-nowrap px-3 py-2 text-card-foreground">{row.workDate}</td>
+                  ) : null}
+                  {show("morningCheckInAt") ? (
+                    <td className="whitespace-nowrap px-3 py-2">
                     <TimeInput
                       disabled={!canEdit || isSaving}
                       value={row.morningCheckIn ?? ""}
                       onChange={(value) => handleChange(row.id, "morningCheckIn", value)}
                     />
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-2">
+                    </td>
+                  ) : null}
+                  {show("morningCheckOutAt") ? (
+                    <td className="whitespace-nowrap px-3 py-2">
                     <TimeInput
                       disabled={!canEdit || isSaving}
                       value={row.morningCheckOut ?? ""}
                       onChange={(value) => handleChange(row.id, "morningCheckOut", value)}
                     />
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-2">
+                    </td>
+                  ) : null}
+                  {show("afternoonCheckInAt") ? (
+                    <td className="whitespace-nowrap px-3 py-2">
                     <TimeInput
                       disabled={!canEdit || isSaving}
                       value={row.afternoonCheckIn ?? ""}
                       onChange={(value) => handleChange(row.id, "afternoonCheckIn", value)}
                     />
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-2">
+                    </td>
+                  ) : null}
+                  {show("afternoonCheckOutAt") ? (
+                    <td className="whitespace-nowrap px-3 py-2">
                     <TimeInput
                       disabled={!canEdit || isSaving}
                       value={row.afternoonCheckOut ?? ""}
                       onChange={(value) => handleChange(row.id, "afternoonCheckOut", value)}
                     />
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-2 text-card-foreground">{formatNumber(row.workDay)}</td>
-                  <td className="whitespace-nowrap px-3 py-2 text-card-foreground">
+                    </td>
+                  ) : null}
+                  {show("nightCheckInAt") ? (
+                    <td className="whitespace-nowrap px-3 py-2">
+                    <TimeInput
+                      disabled={!canEdit || isSaving}
+                      value={row.nightCheckIn ?? ""}
+                      onChange={(value) => handleChange(row.id, "nightCheckIn", value)}
+                    />
+                    </td>
+                  ) : null}
+                  {show("nightCheckOutAt") ? (
+                    <td className="whitespace-nowrap px-3 py-2">
+                    <TimeInput
+                      disabled={!canEdit || isSaving}
+                      value={row.nightCheckOut ?? ""}
+                      onChange={(value) => handleChange(row.id, "nightCheckOut", value)}
+                    />
+                    </td>
+                  ) : null}
+                  {show("workDay") ? (
+                    <td className="whitespace-nowrap px-3 py-2 text-card-foreground">{formatNumber(row.workDay)}</td>
+                  ) : null}
+                  {show("lateMinutes") ? (
+                    <td className="whitespace-nowrap px-3 py-2 text-card-foreground">
                     {formatMinutesText(row.lateMinutes)}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-2 text-card-foreground">
+                    </td>
+                  ) : null}
+                  {show("earlyLeaveMinutes") ? (
+                    <td className="whitespace-nowrap px-3 py-2 text-card-foreground">
                     {formatMinutesText(row.earlyLeaveMinutes)}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-2 text-card-foreground">
+                    </td>
+                  ) : null}
+                  {show("overtimeMinutes") ? (
+                    <td className="whitespace-nowrap px-3 py-2 text-card-foreground">
                     {formatMinutesText(row.overtimeMinutes)}
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-2 text-card-foreground">
-                    <Badge tone={statusTone[row.status]}>{statusLabel[row.status]}</Badge>
-                  </td>
+                    </td>
+                  ) : null}
+                  {show("status") ? (
+                    <td className="whitespace-nowrap px-3 py-2 text-card-foreground">
+                      {row.status ? <Badge tone={statusTone[row.status]}>{statusLabel[row.status]}</Badge> : "-"}
+                    </td>
+                  ) : null}
                 </tr>
               ))}
             </tbody>
@@ -492,17 +581,19 @@ function toEditRow(row: AttendanceSummaryRow): AttendanceEditRow {
     morningCheckOut: toTimeInputValue(row.morningCheckOutAt),
     afternoonCheckIn: toTimeInputValue(row.afternoonCheckInAt),
     afternoonCheckOut: toTimeInputValue(row.afternoonCheckOutAt),
-    workDay: row.workDay,
-    lateMinutes: row.lateMinutes,
-    earlyLeaveMinutes: row.earlyLeaveMinutes,
-    overtimeMinutes: row.overtimeMinutes,
+    nightCheckIn: toTimeInputValue(row.nightCheckInAt),
+    nightCheckOut: toTimeInputValue(row.nightCheckOutAt),
+    workDay: Number(row.workDay ?? 0),
+    lateMinutes: Number(row.lateMinutes ?? 0),
+    earlyLeaveMinutes: Number(row.earlyLeaveMinutes ?? 0),
+    overtimeMinutes: Number(row.overtimeMinutes ?? 0),
     status: row.status,
   };
 }
 
 function buildEmployeeGroups(rows: AttendanceSummaryRow[]) {
   const groups = new Map<string, AttendanceEmployeeGroup>();
-  const sortedRows = [...rows].sort((left, right) => left.workDate.localeCompare(right.workDate));
+  const sortedRows = [...rows].sort((left, right) => (left.workDate ?? "").localeCompare(right.workDate ?? ""));
 
   for (const row of sortedRows) {
     const current = groups.get(row.employeeId) ?? {
@@ -518,20 +609,20 @@ function buildEmployeeGroups(rows: AttendanceSummaryRow[]) {
     };
 
     current.rows.push(row);
-    current.workDay += row.workDay;
-    current.lateMinutes += row.lateMinutes;
-    current.earlyLeaveMinutes += row.earlyLeaveMinutes;
-    current.overtimeMinutes += row.overtimeMinutes;
+    current.workDay += Number(row.workDay ?? 0);
+    current.lateMinutes += Number(row.lateMinutes ?? 0);
+    current.earlyLeaveMinutes += Number(row.earlyLeaveMinutes ?? 0);
+    current.overtimeMinutes += Number(row.overtimeMinutes ?? 0);
     current.status = getGroupStatus(current.rows);
     groups.set(row.employeeId, current);
   }
 
   return Array.from(groups.values())
     .map((group) => ({ ...group, workDay: roundNumber(group.workDay) }))
-    .sort((left, right) => left.employeeCode.localeCompare(right.employeeCode, "vi", { numeric: true }));
+    .sort((left, right) => (left.employeeCode ?? "").localeCompare(right.employeeCode ?? "", "vi", { numeric: true }));
 }
 
-function getGroupStatus(rows: AttendanceSummaryRow[]): AttendanceSummaryRow["status"] {
+function getGroupStatus(rows: AttendanceSummaryRow[]): AttendanceSummaryRow["status"] | undefined {
   if (rows.some((row) => row.status === "missing_punch")) {
     return "missing_punch";
   }

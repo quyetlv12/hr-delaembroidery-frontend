@@ -1,5 +1,5 @@
 import { Eye, EyeOff } from "lucide-react";
-import { useState, type InputHTMLAttributes } from "react";
+import { useState, type InputHTMLAttributes, type ReactNode } from "react";
 import type { FieldError, FieldValues, Path, UseFormRegister } from "react-hook-form";
 
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ type AppInputProps<T extends FieldValues> = InputHTMLAttributes<HTMLInputElement
   register: UseFormRegister<T>;
   error?: FieldError;
   labelClassName?: string;
+  leftIcon?: ReactNode;
 };
 
 export function AppInput<T extends FieldValues>({
@@ -23,6 +24,7 @@ export function AppInput<T extends FieldValues>({
   className,
   labelClassName,
   type,
+  leftIcon,
   ...props
 }: AppInputProps<T>) {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
@@ -32,9 +34,15 @@ export function AppInput<T extends FieldValues>({
   return (
     <FormFieldShell label={label} error={error?.message} labelClassName={labelClassName}>
       <div className="relative">
+        {leftIcon ? (
+          <div className="absolute inset-y-0 left-0 flex w-10 items-center justify-center text-muted-foreground pointer-events-none">
+            {leftIcon}
+          </div>
+        ) : null}
         <Input
           className={cn(
             isPasswordInput && "pr-10",
+            leftIcon && "pl-10",
             className,
           )}
           type={inputType}

@@ -1,3 +1,5 @@
+import type { PayrollEmployeeViewColumn } from "@/features/employee-view-settings/employee-view-settings.types";
+
 export type SalaryPeriod = {
   id: string;
   month: number;
@@ -46,6 +48,7 @@ export type SalaryRecord = {
   advanceTotal: number;
   deductionTotal: number;
   netSalary: number;
+  dependentNote?: string;
   status: "draft" | "locked";
   details: SalaryRecordDetail[];
 };
@@ -55,8 +58,27 @@ export type PayrollResponse = {
   records: SalaryRecord[];
   totals: {
     employeeCount: number;
-    workDay: number;
-    overtimeTotal: number;
-    netSalary: number;
+    workDay?: number;
+    overtimeTotal?: number;
+    netSalary?: number;
   };
+  visibleColumns: PayrollEmployeeViewColumn[];
+};
+
+export type PayrollFormulaCategory = {
+  key: string;
+  name: string;
+  formula: string;
+};
+
+export type PayrollFormulaSetting = {
+  insuranceBaseSalary: number;
+  employeeInsuranceRate: number;
+  employerInsuranceRate: number;
+  earningCategories: PayrollFormulaCategory[];
+  deductionCategories: PayrollFormulaCategory[];
+  dailySalaryFormula: string;
+  grossSalaryFormula: string;
+  deductionFormula: string;
+  netSalaryFormula: string;
 };

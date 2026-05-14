@@ -72,7 +72,6 @@ export function RolesPermissionsPage() {
               <Button
                 aria-label={`Sửa ${row.original.name}`}
                 className="h-8 w-8 px-0"
-                disabled={row.original.isSystem}
                 variant="ghost"
                 onClick={() => navigate(`/roles-permissions/${row.original.id}/edit`)}
               >

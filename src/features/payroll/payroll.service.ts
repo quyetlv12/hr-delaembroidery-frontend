@@ -1,7 +1,7 @@
 import { api, unwrapApiResponse } from "@/services/api";
 import type { ApiResponse } from "@/types/api.types";
 
-import type { PayrollResponse } from "./payroll.types";
+import type { PayrollFormulaSetting, PayrollResponse } from "./payroll.types";
 
 export async function getPayroll(month: number, year: number) {
   const response = await api.get<ApiResponse<PayrollResponse>>("/payroll", {
@@ -12,6 +12,16 @@ export async function getPayroll(month: number, year: number) {
 
 export async function calculatePayroll(month: number, year: number) {
   const response = await api.post<ApiResponse<PayrollResponse>>("/payroll/calculate", { month, year });
+  return unwrapApiResponse(response.data);
+}
+
+export async function getPayrollFormulaSetting() {
+  const response = await api.get<ApiResponse<PayrollFormulaSetting>>("/payroll/settings/formula");
+  return unwrapApiResponse(response.data);
+}
+
+export async function updatePayrollFormulaSetting(values: PayrollFormulaSetting) {
+  const response = await api.put<ApiResponse<PayrollFormulaSetting>>("/payroll/settings/formula", values);
   return unwrapApiResponse(response.data);
 }
 

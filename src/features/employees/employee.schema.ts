@@ -15,7 +15,7 @@ export const employeeSchema = z.object({
   joinDate: z.string().min(1, "Vui lòng chọn ngày vào làm"),
   contractType: z.string().optional(),
   salary: z.string().min(1, "Vui lòng nhập lương cơ bản"),
-  shiftCount: z.enum(["1", "2"]),
+  shiftCount: z.enum(["1", "2", "3"]),
   bankAccount: z.string().optional(),
   bankName: z.string().optional(),
   loginPassword: z

@@ -1,22 +1,25 @@
 import type { PayrollResponse } from "@/features/payroll/payroll.types";
+import type { AttendanceEmployeeViewColumn } from "@/features/employee-view-settings/employee-view-settings.types";
 
 export type AttendanceSummaryRow = {
   id: string;
   employeeId: string;
-  employeeCode: string;
-  employeeName: string;
-  workDate: string;
+  employeeCode?: string;
+  employeeName?: string;
+  workDate?: string;
   checkInAt?: string;
   checkOutAt?: string;
   morningCheckInAt?: string;
   morningCheckOutAt?: string;
   afternoonCheckInAt?: string;
   afternoonCheckOutAt?: string;
-  lateMinutes: number;
-  earlyLeaveMinutes: number;
-  overtimeMinutes: number;
-  workDay: number;
-  status: "present" | "leave" | "missing_punch";
+  nightCheckInAt?: string;
+  nightCheckOutAt?: string;
+  lateMinutes?: number;
+  earlyLeaveMinutes?: number;
+  overtimeMinutes?: number;
+  workDay?: number;
+  status?: "present" | "leave" | "missing_punch";
 };
 
 export type AttendanceResponse = {
@@ -25,11 +28,12 @@ export type AttendanceResponse = {
   rows: AttendanceSummaryRow[];
   totals: {
     rows: number;
-    workDay: number;
-    lateMinutes: number;
-    earlyLeaveMinutes: number;
-    overtimeMinutes: number;
+    workDay?: number;
+    lateMinutes?: number;
+    earlyLeaveMinutes?: number;
+    overtimeMinutes?: number;
   };
+  visibleColumns: AttendanceEmployeeViewColumn[];
 };
 
 export type AttendanceSettings = {
@@ -37,6 +41,8 @@ export type AttendanceSettings = {
   morningEnd: string;
   afternoonStart: string;
   afternoonEnd: string;
+  nightStart: string;
+  nightEnd: string;
   overtimeRate: number;
 };
 
@@ -68,6 +74,8 @@ export type UpdateAttendanceSummaryRowInput = {
   morningCheckOut: string | null;
   afternoonCheckIn: string | null;
   afternoonCheckOut: string | null;
+  nightCheckIn: string | null;
+  nightCheckOut: string | null;
 };
 
 export type UpdateAttendanceSummariesResponse = {

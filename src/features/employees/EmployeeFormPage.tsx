@@ -35,6 +35,7 @@ const statusOptions: SelectOption[] = [
 const shiftCountOptions: SelectOption[] = [
   { label: "1 ca/ngày", value: "1" },
   { label: "2 ca/ngày", value: "2" },
+  { label: "3 ca/ngày", value: "3" },
 ];
 
 const defaultValues: EmployeeFormValues = {

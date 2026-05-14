@@ -11,6 +11,10 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { RequirePermission } from "@/components/common/RequirePermission";
 import { AppMonthPicker } from "@/components/form/AppMonthPicker";
 import { permissions } from "@/constants/permissions";
+import {
+  payrollEmployeeViewColumns,
+  type PayrollEmployeeViewColumn,
+} from "@/features/employee-view-settings/employee-view-settings.types";
 import { confirmLockPayroll } from "@/lib/confirm";
 import { showApiError, showSuccess } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -44,6 +48,11 @@ export function PayrollPage() {
     queryFn: () => getPayroll(month, year),
   });
   const period = payrollQuery.data?.period;
+  const visibleColumns = useMemo(
+    () => payrollQuery.data?.visibleColumns ?? [...payrollEmployeeViewColumns],
+    [payrollQuery.data?.visibleColumns],
+  );
+  const visibleColumnSet = useMemo(() => new Set(visibleColumns), [visibleColumns]);
   const isLocked = period?.status === "locked";
   const records = useMemo(() => payrollQuery.data?.records ?? [], [payrollQuery.data?.records]);
 
@@ -101,8 +110,8 @@ export function PayrollPage() {
   const filteredTotals = useMemo(
     () => ({
       employeeCount: filteredRecords.length,
-      workDay: filteredRecords.reduce((total, record) => total + Number(record.workDay), 0),
-      netSalary: filteredRecords.reduce((total, record) => total + Number(record.netSalary), 0),
+      workDay: filteredRecords.reduce((total, record) => total + Number(record.workDay ?? 0), 0),
+      netSalary: filteredRecords.reduce((total, record) => total + Number(record.netSalary ?? 0), 0),
     }),
     [filteredRecords],
   );
@@ -222,8 +231,12 @@ export function PayrollPage() {
 
         <div className="grid border-t border-border md:grid-cols-3">
           <Metric icon={Users} label="Nhân viên" value={filteredTotals.employeeCount} />
-          <Metric icon={CalendarDays} label="Ngày công" value={formatNumber(filteredTotals.workDay)} />
-          <Metric icon={Banknote} label="Thực nhận" value={currencyFormatter.format(filteredTotals.netSalary)} />
+          {visibleColumnSet.has("workDay") ? (
+            <Metric icon={CalendarDays} label="Ngày công" value={formatNumber(filteredTotals.workDay)} />
+          ) : null}
+          {visibleColumnSet.has("netSalary") ? (
+            <Metric icon={Banknote} label="Thực nhận" value={currencyFormatter.format(filteredTotals.netSalary)} />
+          ) : null}
         </div>
       </section>
 
@@ -241,13 +254,22 @@ export function PayrollPage() {
           title={records.length > 0 ? "Không có bản ghi phù hợp" : "Chưa có bản ghi lương"}
         />
       ) : (
-        <PayrollExcelTable records={filteredRecords} />
+        <PayrollExcelTable records={filteredRecords} visibleColumns={visibleColumns} />
       )}
     </div>
   );
 }
 
-function PayrollExcelTable({ records }: { records: SalaryRecord[] }) {
+function PayrollExcelTable({
+  records,
+  visibleColumns,
+}: {
+  records: SalaryRecord[];
+  visibleColumns: PayrollEmployeeViewColumn[];
+}) {
+  const visibleColumnSet = useMemo(() => new Set(visibleColumns), [visibleColumns]);
+  const show = (column: PayrollEmployeeViewColumn) => visibleColumnSet.has(column);
+  const visibleColumnCount = payrollEmployeeViewColumns.filter((column) => visibleColumnSet.has(column)).length;
   const groupedRecords = useMemo(() => groupPayrollRecords(records), [records]);
   const totals = useMemo(
     () => ({
@@ -274,55 +296,74 @@ function PayrollExcelTable({ records }: { records: SalaryRecord[] }) {
       <div className="border-b border-border px-4 py-3 md:px-5">
         <h2 className="text-base font-semibold text-card-foreground">Bảng tính lương theo mẫu Excel</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Công thức chính: Tổng lương ngày = lương cố định + phụ cấp; lương trong tháng = tổng lương ngày x số công;
-          tổng giảm trừ = BHXH NLĐ + thuế TNCN + tạm ứng; thực nhận = tổng lương - tổng giảm trừ.
+          Các số tiền được tính theo danh mục và công thức do admin cài đặt trong màn hình cài đặt chấm công.
         </p>
       </div>
 
       <div className="scrollbar-none max-h-[72vh] overflow-auto">
-        <table className="min-w-[2680px] table-fixed border-collapse text-left text-[12px]">
+        <table
+          className="table-fixed border-collapse text-left text-[12px]"
+          style={{ minWidth: `${Math.max(760, visibleColumnCount * 112)}px` }}
+        >
           <thead className="sticky top-0 z-20 text-card-foreground">
             <tr className="bg-sky-50 text-center text-[12px] font-semibold uppercase text-sky-950">
-              <GroupHeader colSpan={5}>Thông tin nhân viên</GroupHeader>
-              <GroupHeader colSpan={6}>Lương ngày được hưởng</GroupHeader>
-              <GroupHeader colSpan={3}>Ngày công</GroupHeader>
-              <GroupHeader colSpan={3}>Lương được hưởng</GroupHeader>
-              <GroupHeader colSpan={2}>Bảng tính BHXH</GroupHeader>
-              <GroupHeader colSpan={3}>Các khoản giảm trừ</GroupHeader>
-              <GroupHeader>Thực nhận</GroupHeader>
-              <GroupHeader>Ghi chú NPT</GroupHeader>
-              <GroupHeader>Email</GroupHeader>
+              {renderGroupHeader("Thông tin nhân viên", [
+                "employeeCode",
+                "employeeName",
+                "departmentName",
+                "positionName",
+                "insuranceSalary",
+                "configuredSalary",
+              ], visibleColumnSet)}
+              {renderGroupHeader("Lương ngày được hưởng", [
+                "fixedDailySalary",
+                "responsibilityAllowance",
+                "mealAllowance",
+                "phoneAllowance",
+                "kpiAllowance",
+                "dailyTotal",
+              ], visibleColumnSet)}
+              {renderGroupHeader("Ngày công", ["workDay", "overtimeWorkDay", "totalWorkDay"], visibleColumnSet)}
+              {renderGroupHeader("Lương được hưởng", ["earnedSalary", "overtimeTotal", "grossSalary"], visibleColumnSet)}
+              {renderGroupHeader("Bảng tính BHXH", ["employerInsuranceTotal", "insuranceTotal"], visibleColumnSet)}
+              {renderGroupHeader("Các khoản giảm trừ", ["taxTotal", "advanceTotal", "deductionTotal"], visibleColumnSet)}
+              {show("netSalary") ? <GroupHeader>Thực nhận</GroupHeader> : null}
+              {show("dependentNote") ? <GroupHeader>Ghi chú NPT</GroupHeader> : null}
+              {show("email") ? <GroupHeader>Email</GroupHeader> : null}
+              {show("status") ? <GroupHeader>Trạng thái</GroupHeader> : null}
             </tr>
             <tr className="bg-sky-50 text-[12px] font-semibold text-sky-950">
-              <HeaderCell className="w-20">Mã NV</HeaderCell>
-              <HeaderCell className="w-48">Họ và tên</HeaderCell>
-              <HeaderCell className="w-32">Chức vụ</HeaderCell>
-              <HeaderCell className="w-32 text-right">Lương BHXH</HeaderCell>
-              <HeaderCell className="w-32 text-right">Thực hưởng</HeaderCell>
-              <HeaderCell className="w-32 text-right">Lương cố định</HeaderCell>
-              <HeaderCell className="w-28 text-right">Trách nhiệm</HeaderCell>
-              <HeaderCell className="w-24 text-right">Ăn ca</HeaderCell>
-              <HeaderCell className="w-28 text-right">Điện thoại</HeaderCell>
-              <HeaderCell className="w-32 text-right">KPI</HeaderCell>
-              <HeaderCell className="w-32 text-right">Tổng cộng</HeaderCell>
-              <HeaderCell className="w-28 text-right">Số công</HeaderCell>
-              <HeaderCell className="w-24 text-right">Công tăng ca</HeaderCell>
-              <HeaderCell className="w-28 text-right">Tổng công</HeaderCell>
-              <HeaderCell className="w-36 text-right">Lương trong tháng</HeaderCell>
-              <HeaderCell className="w-28 text-right">Lương tăng ca</HeaderCell>
-              <HeaderCell className="w-36 text-right">Tổng lương</HeaderCell>
-              <HeaderCell className="w-32 text-right">BHXH công ty</HeaderCell>
-              <HeaderCell className="w-32 text-right">BHXH NLĐ</HeaderCell>
-              <HeaderCell className="w-28 text-right">Thuế TNCN</HeaderCell>
-              <HeaderCell className="w-28 text-right">Tạm ứng</HeaderCell>
-              <HeaderCell className="w-40 text-right">Tổng giảm trừ</HeaderCell>
-              <HeaderCell className="w-36 text-right">Thực nhận</HeaderCell>
-              <HeaderCell className="w-32">Ghi chú NPT</HeaderCell>
-              <HeaderCell className="w-56">Email</HeaderCell>
+              {show("employeeCode") ? <HeaderCell className="w-20">Mã NV</HeaderCell> : null}
+              {show("employeeName") ? <HeaderCell className="w-48">Họ và tên</HeaderCell> : null}
+              {show("departmentName") ? <HeaderCell className="w-36">Phòng ban</HeaderCell> : null}
+              {show("positionName") ? <HeaderCell className="w-32">Chức vụ</HeaderCell> : null}
+              {show("insuranceSalary") ? <HeaderCell className="w-32 text-right">Lương BHXH</HeaderCell> : null}
+              {show("configuredSalary") ? <HeaderCell className="w-32 text-right">Thực hưởng</HeaderCell> : null}
+              {show("fixedDailySalary") ? <HeaderCell className="w-32 text-right">Lương cố định</HeaderCell> : null}
+              {show("responsibilityAllowance") ? <HeaderCell className="w-28 text-right">Trách nhiệm</HeaderCell> : null}
+              {show("mealAllowance") ? <HeaderCell className="w-24 text-right">Ăn ca</HeaderCell> : null}
+              {show("phoneAllowance") ? <HeaderCell className="w-28 text-right">Điện thoại</HeaderCell> : null}
+              {show("kpiAllowance") ? <HeaderCell className="w-32 text-right">KPI</HeaderCell> : null}
+              {show("dailyTotal") ? <HeaderCell className="w-32 text-right">Tổng cộng</HeaderCell> : null}
+              {show("workDay") ? <HeaderCell className="w-28 text-right">Số công</HeaderCell> : null}
+              {show("overtimeWorkDay") ? <HeaderCell className="w-24 text-right">Công tăng ca</HeaderCell> : null}
+              {show("totalWorkDay") ? <HeaderCell className="w-28 text-right">Tổng công</HeaderCell> : null}
+              {show("earnedSalary") ? <HeaderCell className="w-36 text-right">Lương trong tháng</HeaderCell> : null}
+              {show("overtimeTotal") ? <HeaderCell className="w-28 text-right">Lương tăng ca</HeaderCell> : null}
+              {show("grossSalary") ? <HeaderCell className="w-36 text-right">Tổng lương</HeaderCell> : null}
+              {show("employerInsuranceTotal") ? <HeaderCell className="w-32 text-right">BHXH công ty</HeaderCell> : null}
+              {show("insuranceTotal") ? <HeaderCell className="w-32 text-right">BHXH NLĐ</HeaderCell> : null}
+              {show("taxTotal") ? <HeaderCell className="w-28 text-right">Thuế TNCN</HeaderCell> : null}
+              {show("advanceTotal") ? <HeaderCell className="w-28 text-right">Tạm ứng</HeaderCell> : null}
+              {show("deductionTotal") ? <HeaderCell className="w-40 text-right">Tổng giảm trừ</HeaderCell> : null}
+              {show("netSalary") ? <HeaderCell className="w-36 text-right">Thực nhận</HeaderCell> : null}
+              {show("dependentNote") ? <HeaderCell className="w-32">Ghi chú NPT</HeaderCell> : null}
+              {show("email") ? <HeaderCell className="w-56">Email</HeaderCell> : null}
+              {show("status") ? <HeaderCell className="w-24">Trạng thái</HeaderCell> : null}
             </tr>
             <tr className="bg-amber-50 text-center text-[11px] italic text-muted-foreground">
-              {formulaLabels.map((label) => (
-                <th className="border border-border px-2 py-2 font-medium" key={label}>
+              {payrollFormulaLabels.filter(([column]) => show(column)).map(([column, label]) => (
+                <th className="border border-border px-2 py-2 font-medium" key={column}>
                   {label}
                 </th>
               ))}
@@ -335,30 +376,44 @@ function PayrollExcelTable({ records }: { records: SalaryRecord[] }) {
                 groupName={group.name}
                 key={group.name}
                 records={group.records}
+                visibleColumnCount={visibleColumnCount}
+                visibleColumns={visibleColumns}
               />
             ))}
           </tbody>
           <tfoot className="sticky bottom-0 z-10 bg-amber-50 font-semibold text-card-foreground">
             <tr>
-              <td className="border border-border px-3 py-2" colSpan={3}>
-                TỔNG CỘNG
-              </td>
-              <MoneyTableCell value={totals.insuranceSalary} />
-              <MoneyTableCell value={totals.configuredSalary} />
-              <td className="border border-border px-3 py-2" colSpan={6} />
-              <NumberTableCell value={totals.workDay} />
-              <NumberTableCell value={totals.overtimeWorkDay} />
-              <NumberTableCell value={totals.totalWorkDay} />
-              <MoneyTableCell tone="base" value={totals.earnedSalary} />
-              <MoneyTableCell sign="plus" tone="positive" value={totals.overtimeTotal} />
-              <MoneyTableCell tone="base" value={totals.grossSalary} />
-              <MoneyTableCell sign="minus" tone="negative" value={totals.employerInsuranceTotal} />
-              <MoneyTableCell sign="minus" tone="negative" value={totals.insuranceTotal} />
-              <MoneyTableCell sign="minus" tone="negative" value={totals.taxTotal} />
-              <MoneyTableCell sign="minus" tone="negative" value={totals.advanceTotal} />
-              <MoneyTableCell sign="minus" tone="negative" value={totals.deductionTotal} />
-              <MoneyTableCell className="bg-yellow-200 text-slate-950" tone="net" value={totals.netSalary} />
-              <td className="border border-border px-3 py-2" colSpan={2} />
+              {show("employeeCode") ? <FooterTextCell>TỔNG CỘNG</FooterTextCell> : null}
+              {show("employeeName") ? <FooterTextCell /> : null}
+              {show("departmentName") ? <FooterTextCell /> : null}
+              {show("positionName") ? <FooterTextCell /> : null}
+              {show("insuranceSalary") ? <MoneyTableCell value={totals.insuranceSalary} /> : null}
+              {show("configuredSalary") ? <MoneyTableCell value={totals.configuredSalary} /> : null}
+              {show("fixedDailySalary") ? <FooterTextCell /> : null}
+              {show("responsibilityAllowance") ? <FooterTextCell /> : null}
+              {show("mealAllowance") ? <FooterTextCell /> : null}
+              {show("phoneAllowance") ? <FooterTextCell /> : null}
+              {show("kpiAllowance") ? <FooterTextCell /> : null}
+              {show("dailyTotal") ? <FooterTextCell /> : null}
+              {show("workDay") ? <NumberTableCell value={totals.workDay} /> : null}
+              {show("overtimeWorkDay") ? <NumberTableCell value={totals.overtimeWorkDay} /> : null}
+              {show("totalWorkDay") ? <NumberTableCell value={totals.totalWorkDay} /> : null}
+              {show("earnedSalary") ? <MoneyTableCell tone="base" value={totals.earnedSalary} /> : null}
+              {show("overtimeTotal") ? <MoneyTableCell sign="plus" tone="positive" value={totals.overtimeTotal} /> : null}
+              {show("grossSalary") ? <MoneyTableCell tone="base" value={totals.grossSalary} /> : null}
+              {show("employerInsuranceTotal") ? (
+                <MoneyTableCell sign="minus" tone="negative" value={totals.employerInsuranceTotal} />
+              ) : null}
+              {show("insuranceTotal") ? <MoneyTableCell sign="minus" tone="negative" value={totals.insuranceTotal} /> : null}
+              {show("taxTotal") ? <MoneyTableCell sign="minus" tone="negative" value={totals.taxTotal} /> : null}
+              {show("advanceTotal") ? <MoneyTableCell sign="minus" tone="negative" value={totals.advanceTotal} /> : null}
+              {show("deductionTotal") ? <MoneyTableCell sign="minus" tone="negative" value={totals.deductionTotal} /> : null}
+              {show("netSalary") ? (
+                <MoneyTableCell className="bg-yellow-200 text-slate-950" tone="net" value={totals.netSalary} />
+              ) : null}
+              {show("dependentNote") ? <FooterTextCell /> : null}
+              {show("email") ? <FooterTextCell /> : null}
+              {show("status") ? <FooterTextCell /> : null}
             </tr>
           </tfoot>
         </table>
@@ -371,45 +426,60 @@ function PayrollGroupRows({
   groupIndex,
   groupName,
   records,
+  visibleColumnCount,
+  visibleColumns,
 }: {
   groupIndex: number;
   groupName: string;
   records: SalaryRecord[];
+  visibleColumnCount: number;
+  visibleColumns: PayrollEmployeeViewColumn[];
 }) {
+  const visibleColumnSet = new Set(visibleColumns);
+  const show = (column: PayrollEmployeeViewColumn) => visibleColumnSet.has(column);
+
   return (
     <>
       <tr className="bg-slate-100 text-sm font-semibold text-card-foreground">
-        <td className="border border-border px-3 py-2" colSpan={25}>
+        <td className="border border-border px-3 py-2" colSpan={visibleColumnCount}>
           {toRoman(groupIndex + 1)}. Bộ phận {groupName}
         </td>
       </tr>
       {records.map((record) => (
         <tr className="bg-card hover:bg-muted/40" key={record.id}>
-          <TextTableCell>{record.employeeCode}</TextTableCell>
-          <TextTableCell className="font-medium">{record.employeeName}</TextTableCell>
-          <TextTableCell>{record.positionName || "-"}</TextTableCell>
-          <MoneyTableCell value={record.insuranceSalary} />
-          <MoneyTableCell value={record.configuredSalary} />
-          <MoneyTableCell value={record.fixedDailySalary} />
-          <MoneyTableCell sign="plus" tone="positive" value={record.responsibilityAllowance} />
-          <MoneyTableCell sign="plus" tone="positive" value={record.mealAllowance} />
-          <MoneyTableCell sign="plus" tone="positive" value={record.phoneAllowance} />
-          <MoneyTableCell sign="plus" tone="positive" value={record.kpiAllowance} />
-          <MoneyTableCell tone="base" value={record.dailyTotal} />
-          <NumberTableCell value={record.workDay} />
-          <NumberTableCell value={record.overtimeWorkDay} />
-          <NumberTableCell value={record.totalWorkDay} />
-          <MoneyTableCell tone="base" value={record.earnedSalary} />
-          <MoneyTableCell sign="plus" tone="positive" value={record.overtimeTotal} />
-          <MoneyTableCell tone="base" value={record.grossSalary} />
-          <MoneyTableCell sign="minus" tone="negative" value={record.employerInsuranceTotal} />
-          <MoneyTableCell sign="minus" tone="negative" value={record.insuranceTotal} />
-          <MoneyTableCell sign="minus" tone="negative" value={record.taxTotal} />
-          <MoneyTableCell sign="minus" tone="negative" value={record.advanceTotal} />
-          <MoneyTableCell sign="minus" tone="negative" value={record.deductionTotal} />
-          <MoneyTableCell className="bg-yellow-100 text-slate-950" tone="net" value={record.netSalary} />
-          <TextTableCell>{getDependentNote(record)}</TextTableCell>
-          <TextTableCell>{record.email}</TextTableCell>
+          {show("employeeCode") ? <TextTableCell>{record.employeeCode}</TextTableCell> : null}
+          {show("employeeName") ? <TextTableCell className="font-medium">{record.employeeName}</TextTableCell> : null}
+          {show("departmentName") ? <TextTableCell>{record.departmentName || "-"}</TextTableCell> : null}
+          {show("positionName") ? <TextTableCell>{record.positionName || "-"}</TextTableCell> : null}
+          {show("insuranceSalary") ? <MoneyTableCell value={record.insuranceSalary} /> : null}
+          {show("configuredSalary") ? <MoneyTableCell value={record.configuredSalary} /> : null}
+          {show("fixedDailySalary") ? <MoneyTableCell value={record.fixedDailySalary} /> : null}
+          {show("responsibilityAllowance") ? (
+            <MoneyTableCell sign="plus" tone="positive" value={record.responsibilityAllowance} />
+          ) : null}
+          {show("mealAllowance") ? <MoneyTableCell sign="plus" tone="positive" value={record.mealAllowance} /> : null}
+          {show("phoneAllowance") ? <MoneyTableCell sign="plus" tone="positive" value={record.phoneAllowance} /> : null}
+          {show("kpiAllowance") ? <MoneyTableCell sign="plus" tone="positive" value={record.kpiAllowance} /> : null}
+          {show("dailyTotal") ? <MoneyTableCell tone="base" value={record.dailyTotal} /> : null}
+          {show("workDay") ? <NumberTableCell value={record.workDay} /> : null}
+          {show("overtimeWorkDay") ? <NumberTableCell value={record.overtimeWorkDay} /> : null}
+          {show("totalWorkDay") ? <NumberTableCell value={record.totalWorkDay} /> : null}
+          {show("earnedSalary") ? <MoneyTableCell tone="base" value={record.earnedSalary} /> : null}
+          {show("overtimeTotal") ? <MoneyTableCell sign="plus" tone="positive" value={record.overtimeTotal} /> : null}
+          {show("grossSalary") ? <MoneyTableCell tone="base" value={record.grossSalary} /> : null}
+          {show("employerInsuranceTotal") ? (
+            <MoneyTableCell sign="minus" tone="negative" value={record.employerInsuranceTotal} />
+          ) : null}
+          {show("insuranceTotal") ? <MoneyTableCell sign="minus" tone="negative" value={record.insuranceTotal} /> : null}
+          {show("taxTotal") ? <MoneyTableCell sign="minus" tone="negative" value={record.taxTotal} /> : null}
+          {show("advanceTotal") ? <MoneyTableCell sign="minus" tone="negative" value={record.advanceTotal} /> : null}
+          {show("deductionTotal") ? <MoneyTableCell sign="minus" tone="negative" value={record.deductionTotal} /> : null}
+          {show("netSalary") ? (
+            <MoneyTableCell className="bg-yellow-100 text-slate-950" tone="net" value={record.netSalary} />
+          ) : null}
+          {show("dependentNote") ? <TextTableCell>{record.dependentNote}</TextTableCell> : null}
+          {show("email") ? <TextTableCell>{record.email}</TextTableCell> : null}
+          {show("status") ? <TextTableCell>{payrollStatusLabel[record.status]}</TextTableCell> : null}
         </tr>
       ))}
     </>
@@ -446,6 +516,19 @@ function GroupHeader({ children, colSpan = 1 }: { children: ReactNode; colSpan?:
   );
 }
 
+function renderGroupHeader(
+  label: string,
+  columns: PayrollEmployeeViewColumn[],
+  visibleColumnSet: Set<PayrollEmployeeViewColumn>,
+) {
+  const colSpan = columns.filter((column) => visibleColumnSet.has(column)).length;
+  return colSpan > 0 ? (
+    <GroupHeader colSpan={colSpan} key={label}>
+      {label}
+    </GroupHeader>
+  ) : null;
+}
+
 function HeaderCell({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <th className={cn("border border-border px-3 py-3 align-middle", className)}>
@@ -463,6 +546,10 @@ function TextTableCell({ children, className }: { children: ReactNode; className
       {children}
     </td>
   );
+}
+
+function FooterTextCell({ children }: { children?: ReactNode }) {
+  return <td className="border border-border px-3 py-2">{children}</td>;
 }
 
 function NumberTableCell({ value }: { value: number }) {
@@ -553,10 +640,6 @@ function sumRecords(records: SalaryRecord[], key: keyof SalaryRecord) {
   return records.reduce((total, record) => total + Number(record[key] ?? 0), 0);
 }
 
-function getDependentNote(record: SalaryRecord) {
-  return record.details.find((detail) => detail.label.toLocaleLowerCase("vi-VN").includes("phụ thuộc"))?.label ?? "";
-}
-
 function normalizeSearchText(value: string) {
   return value
     .trim()
@@ -571,30 +654,32 @@ function formatNumber(value: number) {
   }).format(value);
 }
 
-const formulaLabels = [
-  "(1)",
-  "(2)",
-  "(3)",
-  "(4)",
-  "(5)",
-  "(6)=(4)/công chuẩn",
-  "(7)",
-  "(8)",
-  "(9)",
-  "(10)",
-  "(11)=cộng(6:10)",
-  "(12)",
-  "(13)",
-  "(14)=(12)+(13)",
-  "(15)=(11)*(12)",
-  "(16)",
-  "(17)=(15)+(16)",
-  "(18)",
-  "(19)",
-  "(20)",
-  "(21)",
-  "(22)=(19)+(20)+(21)",
-  "(23)=(17)-(22)",
-  "(24)",
-  "(25)",
+const payrollFormulaLabels: Array<[PayrollEmployeeViewColumn, string]> = [
+  ["employeeCode", "(1)"],
+  ["employeeName", "(2)"],
+  ["departmentName", "(3)"],
+  ["positionName", "(4)"],
+  ["insuranceSalary", "(5)"],
+  ["configuredSalary", "(6)"],
+  ["fixedDailySalary", "(7)=(5)/công chuẩn"],
+  ["responsibilityAllowance", "(8)"],
+  ["mealAllowance", "(9)"],
+  ["phoneAllowance", "(10)"],
+  ["kpiAllowance", "(11)"],
+  ["dailyTotal", "(12)=cộng(7:11)"],
+  ["workDay", "(13)"],
+  ["overtimeWorkDay", "(14)"],
+  ["totalWorkDay", "(15)=(13)+(14)"],
+  ["earnedSalary", "(16)=(12)*(13)"],
+  ["overtimeTotal", "(17)"],
+  ["grossSalary", "(18)=(16)+(17)"],
+  ["employerInsuranceTotal", "(19)"],
+  ["insuranceTotal", "(20)"],
+  ["taxTotal", "(21)"],
+  ["advanceTotal", "(22)"],
+  ["deductionTotal", "(23)=(20)+(21)+(22)"],
+  ["netSalary", "(24)=(18)-(23)"],
+  ["dependentNote", "(25)"],
+  ["email", "(26)"],
+  ["status", "(27)"],
 ];
