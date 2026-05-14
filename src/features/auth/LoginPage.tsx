@@ -1,11 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
-import { ShieldCheck, User, Lock, ArrowRight } from "lucide-react";
+import { ArrowRight, Lock, User } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { Navigate, useLocation } from "react-router-dom";
 
-import logo from "@/assets/logo.png";
 import loginBg from "@/assets/login-bg.png";
+import logo from "@/assets/logo.png";
 import { Button } from "@/components/common/Button";
 import { AppInput } from "@/components/form/AppInput";
 import { showError, showSuccess } from "@/lib/toast";
