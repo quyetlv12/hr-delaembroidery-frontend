@@ -60,6 +60,27 @@ export type AttendanceMonthSettingsResponse = {
   rows: AttendanceMonthSetting[];
 };
 
+export type HolidaySetting = {
+  id: string;
+  date: string;
+  name: string;
+  isPaid: boolean;
+  amount: number;
+};
+
+export type HolidaySettingsResponse = {
+  year: number;
+  holidays: HolidaySetting[];
+};
+
+export type UpdateHolidaySettingsInput = {
+  year: number;
+  holidays: Array<{
+    date: string;
+    amount: number;
+  }>;
+};
+
 export type UpdateAttendanceMonthSettingInput = {
   month: number;
   year: number;
@@ -92,6 +113,17 @@ export type AttendanceImportResult = {
   attendanceLogs: number;
   unmatchedRows: Array<{ code: string; name: string }>;
   payroll: PayrollResponse;
+};
+
+export type ResetAttendancePayrollResult = {
+  month: number;
+  year: number;
+  attendanceLogs: number;
+  attendanceRows: number;
+  payrollPeriods: number;
+  payrollRecords: number;
+  salaryDetails: number;
+  salaryEmailLogs: number;
 };
 
 export type AttendancePayrollPreviewRecord = {

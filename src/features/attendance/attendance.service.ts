@@ -8,9 +8,12 @@ import type {
   AttendancePreviewRow,
   AttendanceResponse,
   AttendanceSettings,
+  HolidaySettingsResponse,
+  ResetAttendancePayrollResult,
   UpdateAttendanceMonthSettingInput,
   UpdateAttendanceSummariesResponse,
   UpdateAttendanceSummaryRowInput,
+  UpdateHolidaySettingsInput,
 } from "./attendance.types";
 
 export async function getAttendance(month: number, year: number) {
@@ -42,6 +45,18 @@ export async function updateAttendanceMonthSetting(values: UpdateAttendanceMonth
     "/attendance/settings/monthly",
     values,
   );
+  return unwrapApiResponse(response.data);
+}
+
+export async function getHolidaySettings(year: number) {
+  const response = await api.get<ApiResponse<HolidaySettingsResponse>>("/attendance/settings/holidays", {
+    params: { year },
+  });
+  return unwrapApiResponse(response.data);
+}
+
+export async function updateHolidaySettings(values: UpdateHolidaySettingsInput) {
+  const response = await api.put<ApiResponse<HolidaySettingsResponse>>("/attendance/settings/holidays", values);
   return unwrapApiResponse(response.data);
 }
 
@@ -87,6 +102,11 @@ export async function confirmAttendanceImport(input: {
   rows: AttendancePreviewRow[];
 }) {
   const response = await api.post<ApiResponse<AttendanceImportResult>>("/attendance/import/confirm", input);
+  return unwrapApiResponse(response.data);
+}
+
+export async function resetAttendancePayroll(input: { month: number; year: number }) {
+  const response = await api.post<ApiResponse<ResetAttendancePayrollResult>>("/attendance/reset-period", input);
   return unwrapApiResponse(response.data);
 }
 

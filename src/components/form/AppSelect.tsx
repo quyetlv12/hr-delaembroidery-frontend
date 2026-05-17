@@ -46,36 +46,37 @@ function ClearIndicator(props: ClearIndicatorProps<SelectOption, false, GroupBas
 const selectStyles: StylesConfig<SelectOption, false> = {
   control: (base, state) => ({
     ...base,
-    minHeight: "2.25rem",
-    borderRadius: "calc(var(--radius) * 0.8)",
+    minHeight: "2.75rem",
+    borderRadius: "var(--radius)",
     borderColor: state.isFocused
       ? "var(--ring)"
-      : "var(--input)",
-    backgroundColor: "var(--background)",
+      : "var(--field-border)",
+    backgroundColor: "var(--field-bg)",
     boxShadow: state.isFocused
-      ? "0 0 0 2px color-mix(in srgb, var(--ring), transparent 75%)"
-      : "none",
+      ? "var(--field-shadow), 0 0 0 4px color-mix(in srgb, var(--ring), transparent 85%)"
+      : "var(--field-shadow)",
     fontSize: "0.875rem",
-    transition: "border-color 0.15s, box-shadow 0.15s",
+    transition: "background-color 0.15s, border-color 0.15s, box-shadow 0.15s",
     cursor: "pointer",
     "&:hover": {
       borderColor: state.isFocused
         ? "var(--ring)"
-        : "var(--border)",
+        : "var(--field-hover)",
     },
   }),
   valueContainer: (base) => ({
     ...base,
-    padding: "2px 10px",
+    padding: "4px 12px",
   }),
   singleValue: (base) => ({
     ...base,
     color: "var(--foreground)",
     fontSize: "0.875rem",
+    fontWeight: 500,
   }),
   placeholder: (base) => ({
     ...base,
-    color: "var(--muted-foreground)",
+    color: "var(--field-placeholder)",
     fontSize: "0.875rem",
   }),
   input: (base) => ({
@@ -99,12 +100,12 @@ const selectStyles: StylesConfig<SelectOption, false> = {
   menu: (base) => ({
     ...base,
     zIndex: 50,
-    borderRadius: "calc(var(--radius) * 0.8)",
+    borderRadius: "var(--radius)",
     border: "1px solid var(--border)",
     backgroundColor: "var(--popover)",
-    boxShadow: "0 4px 16px -2px rgba(0, 0, 0, 0.12), 0 2px 6px -1px rgba(0, 0, 0, 0.06)",
+    boxShadow: "0 18px 48px -18px rgba(15, 23, 42, 0.35), 0 8px 18px -12px rgba(15, 23, 42, 0.24)",
     overflow: "hidden",
-    marginTop: "4px",
+    marginTop: "6px",
   }),
   menuList: (base) => ({
     ...base,

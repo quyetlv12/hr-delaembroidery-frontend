@@ -23,7 +23,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       return false;
     }
 
-    if (isEmployeeSelfService && ["/employees", "/organization"].includes(item.path)) {
+    if (isEmployeeSelfService && ["/employees", "/employees/salary-history", "/organization"].includes(item.path)) {
       return false;
     }
 

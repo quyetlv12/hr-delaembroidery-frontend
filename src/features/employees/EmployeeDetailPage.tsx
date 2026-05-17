@@ -1,9 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Banknote,
   Building2,
   CalendarDays,
+  Download,
+  FileText,
   IdCard,
   Mail,
   Pencil,
@@ -21,9 +23,10 @@ import { LoadingState } from "@/components/common/LoadingState";
 import { PageHeader } from "@/components/common/PageHeader";
 import { RequirePermission } from "@/components/common/RequirePermission";
 import { permissions } from "@/constants/permissions";
+import { showApiError } from "@/lib/toast";
 
-import { getEmployee } from "./employee.service";
-import type { Employee } from "./employee.types";
+import { downloadEmployeeDocument, getEmployee, getEmployeeAssetUrl, getEmployeeDocuments } from "./employee.service";
+import type { Employee, EmployeeDocument } from "./employee.types";
 
 const currencyFormatter = new Intl.NumberFormat("vi-VN", {
   style: "currency",
@@ -32,6 +35,11 @@ const currencyFormatter = new Intl.NumberFormat("vi-VN", {
 });
 
 const dateFormatter = new Intl.DateTimeFormat("vi-VN");
+
+const dateTimeFormatter = new Intl.DateTimeFormat("vi-VN", {
+  dateStyle: "short",
+  timeStyle: "short",
+});
 
 const genderLabel = {
   male: "Nam",
@@ -59,6 +67,17 @@ export function EmployeeDetailPage() {
     queryKey: ["employees", employeeId],
     queryFn: () => getEmployee(employeeId),
     enabled: Boolean(employeeId),
+  });
+  const documentsQuery = useQuery({
+    queryKey: ["employees", employeeId, "documents"],
+    queryFn: () => getEmployeeDocuments(employeeId),
+    enabled: Boolean(employeeId),
+  });
+  const documentDownloadMutation = useMutation({
+    mutationFn: (employeeDocument: EmployeeDocument) => downloadEmployeeDocument(employeeId, employeeDocument),
+    onError(error) {
+      showApiError(error);
+    },
   });
 
   if (employeeQuery.isLoading) {
@@ -147,6 +166,14 @@ export function EmployeeDetailPage() {
           <DetailItem label="Mã bảo hiểm" value={employee.insuranceCode} />
         </DetailSection>
       </div>
+
+      <DocumentSection
+        documents={documentsQuery.data ?? []}
+        isError={documentsQuery.isError}
+        isLoading={documentsQuery.isLoading}
+        isDownloading={documentDownloadMutation.isPending}
+        onDownload={(employeeDocument) => documentDownloadMutation.mutate(employeeDocument)}
+      />
     </div>
   );
 }
@@ -157,7 +184,7 @@ function Avatar({ employee }: { employee: Employee }) {
       <img
         alt={employee.fullName}
         className="h-16 w-16 rounded-lg border border-border object-cover"
-        src={employee.avatarUrl}
+        src={getEmployeeAssetUrl(employee.avatarUrl)}
       />
     );
   }
@@ -222,6 +249,100 @@ function DetailItem({ label, value }: { label: string; value?: string | number |
   );
 }
 
+function DocumentSection({
+  documents,
+  isDownloading,
+  isError,
+  isLoading,
+  onDownload,
+}: {
+  documents: EmployeeDocument[];
+  isDownloading: boolean;
+  isError: boolean;
+  isLoading: boolean;
+  onDownload: (employeeDocument: EmployeeDocument) => void;
+}) {
+  return (
+    <section className="rounded-lg border border-border bg-card shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-4 md:px-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+            <FileText size={17} />
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-card-foreground">File hồ sơ cá nhân</h2>
+            <p className="text-sm text-muted-foreground">Hợp đồng, CCCD và các tài liệu đã upload.</p>
+          </div>
+        </div>
+        <Badge tone="neutral">{documents.length} file</Badge>
+      </div>
+
+      <div className="p-4 md:p-5">
+        {isLoading ? (
+          <p className="rounded-md border border-dashed border-border bg-muted/20 px-3 py-4 text-sm text-muted-foreground">
+            Đang tải danh sách hồ sơ...
+          </p>
+        ) : null}
+
+        {isError ? (
+          <p className="rounded-md border border-dashed border-destructive/30 bg-destructive/5 px-3 py-4 text-sm text-destructive">
+            Không tải được danh sách file hồ sơ.
+          </p>
+        ) : null}
+
+        {!isLoading && !isError && documents.length === 0 ? (
+          <p className="rounded-md border border-dashed border-border bg-muted/20 px-3 py-4 text-sm text-muted-foreground">
+            Chưa có file hồ sơ nào.
+          </p>
+        ) : null}
+
+        {!isLoading && !isError && documents.length > 0 ? (
+          <div className="grid gap-2 xl:grid-cols-2">
+            {documents.map((employeeDocument) => (
+              <DocumentRow
+                document={employeeDocument}
+                isDownloading={isDownloading}
+                key={employeeDocument.id}
+                onDownload={() => onDownload(employeeDocument)}
+              />
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+function DocumentRow({
+  document,
+  isDownloading,
+  onDownload,
+}: {
+  document: EmployeeDocument;
+  isDownloading: boolean;
+  onDownload: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-3 transition-colors hover:border-primary/30 hover:bg-orange-50/70">
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted text-primary">
+          <FileText size={17} />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-foreground">{document.originalName}</p>
+          <p className="text-xs text-muted-foreground">
+            {formatFileSize(document.size)} · {formatDateTime(document.uploadedAt)}
+          </p>
+        </div>
+      </div>
+      <Button disabled={isDownloading} size="sm" variant="secondary" onClick={onDownload}>
+        <Download size={14} />
+        Tải xuống
+      </Button>
+    </div>
+  );
+}
+
 function formatDate(value?: string) {
   if (!value) {
     return "-";
@@ -229,4 +350,21 @@ function formatDate(value?: string) {
 
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : dateFormatter.format(date);
+}
+
+function formatDateTime(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : dateTimeFormatter.format(date);
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }

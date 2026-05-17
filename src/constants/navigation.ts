@@ -3,7 +3,10 @@ import {
   BarChart3,
   Building2,
   CalendarClock,
+  CalendarDays,
+  Calculator,
   FileBarChart,
+  History,
   Settings,
   ShieldCheck,
   Users,
@@ -32,6 +35,12 @@ export const navItems: NavItem[] = [
     icon: Users,
   },
   {
+    label: "Lịch sử tăng lương",
+    path: "/employees/salary-history",
+    permission: permissions.employeesRead,
+    icon: History,
+  },
+  {
     label: "Phòng ban & chức vụ",
     path: "/organization",
     permission: permissions.employeesRead,
@@ -50,10 +59,22 @@ export const navItems: NavItem[] = [
     icon: Settings,
   },
   {
+    label: "Ngày lễ",
+    path: "/attendance/holidays",
+    permission: permissions.attendanceImport,
+    icon: CalendarDays,
+  },
+  {
     label: "Bảng lương",
     path: "/payroll",
     permission: permissions.payrollRead,
     icon: Banknote,
+  },
+  {
+    label: "Công thức lương",
+    path: "/payroll/formulas",
+    permission: permissions.payrollCalculate,
+    icon: Calculator,
   },
   {
     label: "Vai trò",

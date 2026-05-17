@@ -4,6 +4,7 @@ import {
   Check,
   FileSpreadsheet,
   FileUp,
+  RotateCcw,
   Trash2,
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
@@ -15,12 +16,14 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { AppMonthPicker } from "@/components/form/AppMonthPicker";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { confirmResetAttendancePayroll } from "@/lib/confirm";
 import { cn } from "@/lib/utils";
 import { showApiError, showSuccess, showWarning } from "@/lib/toast";
 
 import {
   confirmAttendanceImport,
   previewAttendanceImport,
+  resetAttendancePayroll,
 } from "./attendance.service";
 import type {
   AttendancePayrollPreviewRecord,
@@ -79,13 +82,28 @@ export function AttendanceImportPage() {
       });
     },
     onSuccess(result) {
-      showSuccess("Đã nhập chấm công và tính lương", {
+      showSuccess("Đã nhập chấm công và cập nhật tiền công", {
         description: `${result.attendanceRows} dòng chấm công, ${result.payroll.records.length} bản ghi lương.`,
       });
       void queryClient.invalidateQueries({ queryKey: ["attendance"] });
       void queryClient.invalidateQueries({ queryKey: ["payroll"] });
       void queryClient.invalidateQueries({ queryKey: ["employees"] });
       navigate(`/attendance?month=${result.month}&year=${result.year}`);
+    },
+    onError(error) {
+      showApiError(error);
+    },
+  });
+
+  const resetMutation = useMutation({
+    mutationFn: resetAttendancePayroll,
+    onSuccess(result) {
+      setPreview(null);
+      showSuccess("Đã reset dữ liệu test", {
+        description: `${result.attendanceRows} dòng chấm công, ${result.payrollRecords} bản ghi lương.`,
+      });
+      void queryClient.invalidateQueries({ queryKey: ["attendance"] });
+      void queryClient.invalidateQueries({ queryKey: ["payroll"] });
     },
     onError(error) {
       showApiError(error);
@@ -108,6 +126,16 @@ export function AttendanceImportPage() {
       return;
     }
     previewMutation.mutate({ file, month, year });
+  };
+
+  const handleResetPeriod = async () => {
+    const period = `${String(month).padStart(2, "0")}/${year}`;
+    const confirmed = await confirmResetAttendancePayroll(period);
+    if (!confirmed) {
+      return;
+    }
+
+    resetMutation.mutate({ month, year });
   };
 
   return (
@@ -254,6 +282,14 @@ export function AttendanceImportPage() {
           </label>
           <div className="flex gap-2">
             <Button
+              disabled={resetMutation.isPending}
+              variant="danger"
+              onClick={handleResetPeriod}
+            >
+              <RotateCcw size={18} />
+              {resetMutation.isPending ? "Đang reset..." : "Reset kỳ này"}
+            </Button>
+            <Button
               disabled={previewMutation.isPending}
               variant="secondary"
               onClick={handlePreview}
@@ -282,7 +318,7 @@ export function AttendanceImportPage() {
             <Metric label="Nhân viên" value={preview.totals.employees} />
             <Metric label="Ô dữ liệu" value={preview.totals.attendanceRows} />
             <Metric
-              label="Lương thực nhận"
+              label="Tổng tiền công"
               value={currencyFormatter.format(
                 preview.payrollPreview.totals.netSalary,
               )}
@@ -366,40 +402,22 @@ function PayrollPreviewTable({
   return (
     <div className="w-full max-w-full overflow-hidden rounded-md border border-border bg-card">
       <div className="scrollbar-none max-h-[72vh] overflow-auto">
-        <table className="min-w-[1420px] table-fixed border-collapse text-left text-[13px]">
+        <table className="w-full table-fixed border-collapse text-left text-[13px]">
           <thead className="sticky top-0 z-10 bg-muted text-[11px] uppercase text-muted-foreground">
             <tr>
-              <th className="w-16 px-3 py-2 font-semibold">Mã NV</th>
-              <th className="w-44 px-3 py-2 font-semibold">Nhân viên</th>
-              <th className="w-20 px-3 py-2 text-right font-semibold">
+              <th className="w-[10%] px-3 py-2 font-semibold">Mã NV</th>
+              <th className="w-[30%] px-3 py-2 font-semibold">Nhân viên</th>
+              <th className="w-[14%] px-3 py-2 text-right font-semibold">
                 Ngày công
               </th>
-              <th className="w-28 px-3 py-2 text-right font-semibold">
-                Lương BHXH
-              </th>
-              <th className="w-28 px-3 py-2 text-right font-semibold">
+              <th className="w-[16%] px-3 py-2 text-right font-semibold">
                 Lương cài đặt
               </th>
-              <th className="w-28 px-3 py-2 text-right font-semibold text-sky-700">
-                Tổng lương ngày
+              <th className="w-[15%] px-3 py-2 text-right font-semibold text-sky-700">
+                Đơn giá công
               </th>
-              <th className="w-32 px-3 py-2 text-right font-semibold text-sky-700">
-                Lương trong tháng
-              </th>
-              <th className="w-24 px-3 py-2 text-right font-semibold text-emerald-700">Tăng ca</th>
-              <th className="w-32 px-3 py-2 text-right font-semibold text-sky-700">
-                Tổng lương
-              </th>
-              <th className="w-28 px-3 py-2 text-right font-semibold text-rose-700">
-                BHXH NLĐ
-              </th>
-              <th className="w-20 px-3 py-2 text-right font-semibold text-rose-700">Thuế</th>
-              <th className="w-24 px-3 py-2 text-right font-semibold text-rose-700">Tạm ứng</th>
-              <th className="w-32 px-3 py-2 text-right font-semibold text-rose-700">
-                Tổng giảm trừ
-              </th>
-              <th className="w-32 px-3 py-2 text-right font-semibold text-primary">
-                Thực nhận
+              <th className="w-[15%] px-3 py-2 text-right font-semibold text-primary">
+                Tiền công
               </th>
             </tr>
           </thead>
@@ -422,37 +440,13 @@ function PayrollPreviewTable({
                   {record.workDay}/{record.standardWorkDay}
                 </td>
                 <td className="px-3 py-2.5 text-right tabular-nums text-card-foreground">
-                  <MoneyValue className="min-w-[104px]" value={record.insuranceSalary} />
-                </td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-card-foreground">
                   <MoneyValue className="min-w-[104px]" value={record.configuredSalary} />
                 </td>
                 <td className="px-3 py-2.5 text-right tabular-nums text-card-foreground">
                   <MoneyValue className="min-w-[104px]" tone="base" value={record.dailyTotal} />
                 </td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-card-foreground">
-                  <MoneyValue className="min-w-[104px]" tone="base" value={record.earnedSalary} />
-                </td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-card-foreground">
-                  <MoneyValue sign="plus" tone="positive" value={record.overtimeTotal} />
-                </td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-card-foreground">
-                  <MoneyValue className="min-w-[104px]" tone="base" value={record.grossSalary} />
-                </td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-card-foreground">
-                  <MoneyValue sign="minus" tone="negative" value={record.insuranceTotal} />
-                </td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-card-foreground">
-                  <MoneyValue sign="minus" tone="negative" value={record.taxTotal} />
-                </td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-card-foreground">
-                  <MoneyValue sign="minus" tone="negative" value={record.advanceTotal} />
-                </td>
-                <td className="px-3 py-2.5 text-right tabular-nums text-card-foreground">
-                  <MoneyValue sign="minus" tone="negative" value={record.deductionTotal} />
-                </td>
                 <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-card-foreground">
-                  <MoneyValue className="min-w-[108px]" tone="net" value={record.netSalary} />
+                  <MoneyValue className="min-w-[108px]" tone="net" value={record.earnedSalary} />
                 </td>
               </tr>
             ))}

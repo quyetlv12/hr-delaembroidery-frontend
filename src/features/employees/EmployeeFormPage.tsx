@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Save } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -17,8 +17,17 @@ import { AppTextarea } from "@/components/form/AppTextarea";
 import { showApiError, showSuccess } from "@/lib/toast";
 import type { SelectOption } from "@/types/api.types";
 
-import { createEmployee, getEmployee, getEmployeeFormOptions, updateEmployee } from "./employee.service";
+import {
+  createEmployee,
+  getEmployee,
+  getEmployeeFormOptions,
+  updateEmployee,
+  uploadEmployeeAvatar,
+  uploadEmployeeDocuments,
+} from "./employee.service";
 import { employeeSchema, type EmployeeFormValues } from "./employee.schema";
+import { EmployeeAttachmentPanel } from "./components/EmployeeAttachmentPanel";
+import { SalaryHistoryPanel } from "./components/SalaryHistoryPanel";
 
 const genderOptions: SelectOption[] = [
   { label: "Nam", value: "male" },
@@ -69,6 +78,8 @@ export function EmployeeFormPage() {
   const isEdit = Boolean(employeeId);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [documentFiles, setDocumentFiles] = useState<File[]>([]);
   const form = useForm<EmployeeFormValues>({
     resolver: zodResolver(employeeSchema),
     defaultValues,
@@ -105,7 +116,9 @@ export function EmployeeFormPage() {
       joinDate: toDateInputValue(employeeQuery.data.joinDate),
       contractType: employeeQuery.data.contractType ?? "",
       salary: String(employeeQuery.data.salary),
-      shiftCount: String(employeeQuery.data.shiftCount ?? 2) as EmployeeFormValues["shiftCount"],
+      shiftCount: String(
+        employeeQuery.data.shiftCount ?? 2,
+      ) as EmployeeFormValues["shiftCount"],
       bankAccount: employeeQuery.data.bankAccount ?? "",
       bankName: employeeQuery.data.bankName ?? "",
       loginPassword: "",
@@ -117,15 +130,35 @@ export function EmployeeFormPage() {
   }, [employeeQuery.data, form]);
 
   const mutation = useMutation({
-    mutationFn: (values: EmployeeFormValues) => {
+    mutationFn: async (values: EmployeeFormValues) => {
       if (isEdit) {
-        return updateEmployee(employeeId, values);
+        const updatedEmployee = await updateEmployee(employeeId, values);
+        if (avatarFile) {
+          await uploadEmployeeAvatar(employeeId, avatarFile);
+        }
+        if (documentFiles.length > 0) {
+          await uploadEmployeeDocuments(employeeId, documentFiles);
+        }
+        return updatedEmployee;
       }
 
-      return createEmployee(values);
+      const createdEmployee = await createEmployee(values);
+      if (avatarFile) {
+        await uploadEmployeeAvatar(createdEmployee.id, avatarFile);
+      }
+      if (documentFiles.length > 0) {
+        await uploadEmployeeDocuments(createdEmployee.id, documentFiles);
+      }
+      return createdEmployee;
     },
     onSuccess() {
-      showSuccess(isEdit ? "Cập nhật nhân viên thành công" : "Thêm nhân viên thành công");
+      showSuccess(
+        isEdit
+          ? "Cập nhật nhân viên và hồ sơ thành công"
+          : "Thêm nhân viên và hồ sơ thành công",
+      );
+      setAvatarFile(null);
+      setDocumentFiles([]);
       void queryClient.invalidateQueries({ queryKey: ["employees"] });
       void queryClient.invalidateQueries({ queryKey: ["payroll"] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
@@ -165,9 +198,22 @@ export function EmployeeFormPage() {
         title={isEdit ? "Sửa nhân viên" : "Thêm nhân viên"}
       />
 
-      <form className="space-y-6" onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
+      <form
+        className="space-y-6"
+        onSubmit={form.handleSubmit((values) => mutation.mutate(values))}
+      >
         <section className="space-y-4">
           <h2 className="text-base font-semibold text-foreground">Hồ sơ</h2>
+
+          <EmployeeAttachmentPanel
+            avatarFile={avatarFile}
+            documentFiles={documentFiles}
+            employeeId={employeeId}
+            existingAvatarUrl={employeeQuery.data?.avatarUrl}
+            isEdit={isEdit}
+            setAvatarFile={setAvatarFile}
+            setDocumentFiles={setDocumentFiles}
+          />
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <AppInput
               error={form.formState.errors.employeeCode}
@@ -236,7 +282,9 @@ export function EmployeeFormPage() {
         </section>
 
         <section className="space-y-4">
-          <h2 className="text-base font-semibold text-foreground">Công việc & lương</h2>
+          <h2 className="text-base font-semibold text-foreground">
+            Công việc & lương
+          </h2>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <AppSelect
               control={form.control}
@@ -288,10 +336,13 @@ export function EmployeeFormPage() {
               register={form.register}
             />
           </div>
+          {isEdit ? <SalaryHistoryPanel employeeId={employeeId} /> : null}
         </section>
 
         <section className="space-y-4">
-          <h2 className="text-base font-semibold text-foreground">Tài khoản ngân hàng</h2>
+          <h2 className="text-base font-semibold text-foreground">
+            Tài khoản ngân hàng
+          </h2>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <AppInput
               error={form.formState.errors.bankName}
@@ -309,14 +360,20 @@ export function EmployeeFormPage() {
         </section>
 
         <section className="space-y-4">
-          <h2 className="text-base font-semibold text-foreground">Tài khoản đăng nhập</h2>
+          <h2 className="text-base font-semibold text-foreground">
+            Tài khoản đăng nhập
+          </h2>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <AppInput
               autoComplete="new-password"
               error={form.formState.errors.loginPassword}
               label={isEdit ? "Mật khẩu đăng nhập mới" : "Mật khẩu đăng nhập"}
               name="loginPassword"
-              placeholder={isEdit ? "Để trống nếu không đổi mật khẩu" : "Để trống để dùng 123456789"}
+              placeholder={
+                isEdit
+                  ? "Để trống nếu không đổi mật khẩu"
+                  : "Để trống để dùng 123456789"
+              }
               register={form.register}
               type="password"
             />

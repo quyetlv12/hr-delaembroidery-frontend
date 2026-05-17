@@ -1,5 +1,4 @@
 import "react-datepicker/dist/react-datepicker.css";
-import "react-alert-confirm/lib/style.css";
 import "./index.css";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";

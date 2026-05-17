@@ -23,6 +23,11 @@ const EmployeeFormPage = lazy(() =>
 const EmployeeDetailPage = lazy(() =>
   import("@/features/employees/EmployeeDetailPage").then((module) => ({ default: module.EmployeeDetailPage })),
 );
+const EmployeeSalaryHistoryPage = lazy(() =>
+  import("@/features/employees/EmployeeSalaryHistoryPage").then((module) => ({
+    default: module.EmployeeSalaryHistoryPage,
+  })),
+);
 const OrganizationPage = lazy(() =>
   import("@/features/organization/OrganizationPage").then((module) => ({ default: module.OrganizationPage })),
 );
@@ -44,8 +49,18 @@ const AttendanceSettingsPage = lazy(() =>
     default: module.AttendanceSettingsPage,
   })),
 );
+const HolidaySettingsPage = lazy(() =>
+  import("@/features/attendance/HolidaySettingsPage").then((module) => ({
+    default: module.HolidaySettingsPage,
+  })),
+);
 const PayrollPage = lazy(() =>
   import("@/features/payroll/PayrollPage").then((module) => ({ default: module.PayrollPage })),
+);
+const PayrollFormulaSettingsPage = lazy(() =>
+  import("@/features/payroll/PayrollFormulaSettingsPage").then((module) => ({
+    default: module.PayrollFormulaSettingsPage,
+  })),
 );
 const RolesPermissionsPage = lazy(() =>
   import("@/features/roles-permissions/RolesPermissionsPage").then((module) => ({
@@ -82,6 +97,14 @@ export function AppRouter() {
               </ProtectedRoute>
             }
             path="employees"
+          />
+          <Route
+            element={
+              <ProtectedRoute permission={permissions.employeesRead}>
+                <EmployeeSalaryHistoryPage />
+              </ProtectedRoute>
+            }
+            path="employees/salary-history"
           />
           <Route
             element={
@@ -157,11 +180,27 @@ export function AppRouter() {
           />
           <Route
             element={
+              <ProtectedRoute permission={permissions.attendanceImport}>
+                <HolidaySettingsPage />
+              </ProtectedRoute>
+            }
+            path="attendance/holidays"
+          />
+          <Route
+            element={
               <ProtectedRoute permission={permissions.payrollRead}>
                 <PayrollPage />
               </ProtectedRoute>
             }
             path="payroll"
+          />
+          <Route
+            element={
+              <ProtectedRoute permission={permissions.payrollCalculate}>
+                <PayrollFormulaSettingsPage />
+              </ProtectedRoute>
+            }
+            path="payroll/formulas"
           />
           <Route
             element={

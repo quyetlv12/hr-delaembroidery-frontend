@@ -12,8 +12,8 @@ type FormFieldShellProps = {
 
 export function FormFieldShell({ label, error, labelClassName, children }: FormFieldShellProps) {
   return (
-    <div className="space-y-1.5">
-      <Label className={cn(labelClassName)}>{label}</Label>
+    <div className="space-y-2">
+      <Label className={cn("text-sm font-semibold text-foreground", labelClassName)}>{label}</Label>
       {children}
       {error ? <span className="block text-xs text-destructive">{error}</span> : null}
     </div>

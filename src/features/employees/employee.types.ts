@@ -38,3 +38,40 @@ export type EmployeeFormOptions = {
   departments: Array<{ label: string; value: string }>;
   positions: Array<{ label: string; value: string }>;
 };
+
+export type EmployeeDocument = {
+  id: string;
+  originalName: string;
+  mimeType?: string;
+  size: number;
+  uploadedAt: string;
+};
+
+export type EmployeeSalaryHistory = {
+  id: string;
+  employeeId?: string;
+  employeeCode?: string;
+  employeeName?: string;
+  departmentName?: string;
+  positionName?: string;
+  previousSalary: number;
+  newSalary: number;
+  changeAmount: number;
+  changePercent?: number;
+  changeSource: string;
+  changeMode?: string;
+  changeValue?: number;
+  changedByLoginCode?: string;
+  createdAt: string;
+};
+
+export type SalaryIncreaseInput = {
+  employeeIds?: string[];
+  mode: "percent" | "amount";
+  value: number;
+};
+
+export type SalaryIncreaseResult = {
+  updated: number;
+  employees: Employee[];
+};

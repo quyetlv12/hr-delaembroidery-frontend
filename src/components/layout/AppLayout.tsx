@@ -20,7 +20,7 @@ export function AppLayout() {
       <div className="flex min-w-0 flex-1 flex-col lg:pl-[16.5rem]">
         <AppHeader onMenuClick={() => setDrawerOpen(true)} />
         <main className="min-w-0 flex-1 overflow-x-hidden p-4 md:p-6">
-          <div className="mx-auto min-w-0 max-w-full xl:max-w-7xl">
+          <div className="mx-auto min-w-0 max-w-full">
             <Outlet />
           </div>
         </main>

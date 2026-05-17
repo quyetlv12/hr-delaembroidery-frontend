@@ -1,5 +1,5 @@
-import { createElement, Fragment, type ReactNode } from "react";
-import AlertConfirm, { type Dispatch } from "react-alert-confirm";
+import { createElement, useEffect, type ReactNode } from "react";
+import { createRoot, type Root } from "react-dom/client";
 
 type ConfirmIntent = "danger" | "warning" | "primary";
 
@@ -11,44 +11,69 @@ export type ConfirmActionOptions = {
   intent?: ConfirmIntent;
 };
 
-const confirmButtonStyle = {
-  danger: "danger",
-  warning: "primary",
-  primary: "primary",
-} as const;
+type ConfirmDialogProps = Required<ConfirmActionOptions> & {
+  onClose: (confirmed: boolean) => void;
+};
 
-AlertConfirm.config({
-  cancelText: "Hủy",
-  maskClosable: false,
-  okText: "Xác nhận",
-  zIndex: 1000,
-});
+function ConfirmDialog({ title, description, confirmText, cancelText, intent, onClose }: ConfirmDialogProps) {
+  useEffect(() => {
+    const previousActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    const cancelButton = document.querySelector<HTMLButtonElement>("[data-hrm-confirm-cancel='true']");
 
-function renderFooter(
-  dispatch: Dispatch,
-  confirmText: string,
-  cancelText: string,
-  intent: ConfirmIntent,
-) {
+    document.body.style.overflow = "hidden";
+    cancelButton?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previousActiveElement?.focus();
+    };
+  }, [onClose]);
+
   return createElement(
-    Fragment,
-    null,
+    "div",
+    { className: "hrm-confirm-overlay" },
     createElement(
-      AlertConfirm.Button,
+      "div",
       {
-        styleType: "default",
-        onClick: () => dispatch(false),
+        "aria-modal": true,
+        className: `hrm-confirm-dialog hrm-confirm-dialog--${intent}`,
+        role: "dialog",
       },
-      cancelText,
-    ),
-    createElement(
-      AlertConfirm.Button,
-      {
-        className: `hrm-confirm-button hrm-confirm-button--${intent}`,
-        styleType: confirmButtonStyle[intent],
-        onClick: () => dispatch(true),
-      },
-      confirmText,
+      createElement("h2", { className: "hrm-confirm-title" }, title),
+      createElement("div", { className: "hrm-confirm-desc" }, description),
+      createElement(
+        "div",
+        { className: "hrm-confirm-actions" },
+        createElement(
+          "button",
+          {
+            className: "hrm-confirm-button hrm-confirm-button--cancel",
+            "data-hrm-confirm-cancel": "true",
+            onClick: () => onClose(false),
+            type: "button",
+          },
+          cancelText,
+        ),
+        createElement(
+          "button",
+          {
+            className: `hrm-confirm-button hrm-confirm-button--${intent}`,
+            onClick: () => onClose(true),
+            type: "button",
+          },
+          confirmText,
+        ),
+      ),
     ),
   );
 }
@@ -60,15 +85,41 @@ export async function confirmAction({
   cancelText = "Hủy",
   intent = "primary",
 }: ConfirmActionOptions) {
-  const [action] = await AlertConfirm({
-    className: `hrm-confirm hrm-confirm--${intent}`,
-    desc: description,
-    footer: (dispatch: Dispatch) => renderFooter(dispatch, confirmText, cancelText, intent),
-    title,
-    type: "confirm",
-  });
+  if (typeof document === "undefined") {
+    return false;
+  }
 
-  return action === true;
+  return new Promise<boolean>((resolve) => {
+    const container = document.createElement("div");
+    let root: Root | null = createRoot(container);
+    let settled = false;
+
+    const close = (confirmed: boolean) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      resolve(confirmed);
+      window.setTimeout(() => {
+        root?.unmount();
+        root = null;
+        container.remove();
+      }, 0);
+    };
+
+    document.body.appendChild(container);
+    root.render(
+      createElement(ConfirmDialog, {
+        cancelText,
+        confirmText,
+        description,
+        intent,
+        onClose: close,
+        title,
+      }),
+    );
+  });
 }
 
 export function confirmDelete(target = "bản ghi này") {
@@ -133,6 +184,15 @@ export function confirmImportExcel(fileName = "file Excel đã chọn") {
     description: "Hệ thống sẽ kiểm tra cột dữ liệu và từ chối các dòng thiếu thông tin bắt buộc.",
     confirmText: "Nhập Excel",
     intent: "warning",
+  });
+}
+
+export function confirmResetAttendancePayroll(period = "kỳ đang chọn") {
+  return confirmAction({
+    title: `Reset chấm công và bảng lương ${period}?`,
+    description: "Thao tác này sẽ xóa dữ liệu chấm công, bảng lương và chi tiết lương của kỳ này để nhập test lại.",
+    confirmText: "Reset dữ liệu",
+    intent: "danger",
   });
 }
 

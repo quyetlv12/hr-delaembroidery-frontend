@@ -25,7 +25,7 @@ export function AppDatePicker<T extends FieldValues>({
         <FormFieldShell label={label} error={fieldState.error?.message}>
           <DatePicker
             calendarClassName="hrm-datepicker"
-            className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
+            className="h-11 w-full rounded-md border border-[var(--field-border)] bg-[var(--field-bg)] px-3 py-2 text-sm font-medium text-foreground shadow-[var(--field-shadow)] outline-none transition-[background-color,border-color,box-shadow] placeholder:text-[var(--field-placeholder)] hover:border-[var(--field-hover)] focus:border-primary focus:ring-4 focus:ring-primary/15"
             dateFormat="dd/MM/yyyy"
             locale={vi}
             popperClassName="hrm-datepicker-popper"

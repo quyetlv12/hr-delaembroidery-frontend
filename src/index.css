@@ -23,6 +23,11 @@
   --destructive: #b42318;
   --ring: #F05423;
   --input: #dce3e7;
+  --field-bg: #ffffff;
+  --field-border: #c8d3da;
+  --field-hover: #aebdca;
+  --field-placeholder: #7f8c96;
+  --field-shadow: 0 1px 2px rgb(15 23 42 / 0.06), inset 0 1px 0 rgb(255 255 255 / 0.75);
   --popover: #ffffff;
   --popover-foreground: #172026;
   --chart-1: #0f766e;
@@ -60,6 +65,11 @@
   --destructive: #f97066;
   --ring: #FF7043;
   --input: #30434f;
+  --field-bg: #172530;
+  --field-border: #3a4f5d;
+  --field-hover: #526a79;
+  --field-placeholder: #9fb0b9;
+  --field-shadow: 0 1px 2px rgb(0 0 0 / 0.18);
   --popover: #16232d;
   --popover-foreground: #eef4f5;
   --chart-1: #2dd4bf;
@@ -100,36 +110,80 @@ body {
   letter-spacing: 0;
 }
 
-.hrm-confirm {
+.hrm-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgb(15 23 42 / 42%);
+}
+
+.hrm-confirm-dialog {
+  width: min(440px, 100%);
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--card);
+  box-shadow: 0 24px 70px rgb(15 23 42 / 22%);
+  padding: 22px;
 }
 
-.hrm-confirm .alert-confirm-title {
+.hrm-confirm-title {
+  margin: 0;
   color: var(--card-foreground);
   font-size: 18px;
   font-weight: 650;
+  line-height: 1.35;
 }
 
-.hrm-confirm .alert-confirm-desc {
+.hrm-confirm-desc {
+  margin-top: 10px;
   color: var(--muted-foreground);
   font-size: 14px;
   line-height: 1.5;
 }
 
-.hrm-confirm .alert-confirm-button {
-  border-radius: 6px;
-  box-shadow: none;
-  font-weight: 600;
+.hrm-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
 }
 
-.hrm-confirm-button--warning.primary-button {
+.hrm-confirm-button {
+  min-height: 38px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  box-shadow: none;
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0 14px;
+}
+
+.hrm-confirm-button:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--primary), white 25%);
+  outline-offset: 2px;
+}
+
+.hrm-confirm-button--cancel {
+  border-color: var(--border);
+  background: var(--card);
+  color: var(--foreground);
+}
+
+.hrm-confirm-button--danger {
+  background: var(--destructive);
+  color: var(--destructive-foreground);
+}
+
+.hrm-confirm-button--warning {
   background: var(--accent);
   color: var(--accent-foreground);
 }
 
-.hrm-confirm-button--primary.primary-button {
+.hrm-confirm-button--primary {
   background: var(--primary);
   color: var(--primary-foreground);
 }
