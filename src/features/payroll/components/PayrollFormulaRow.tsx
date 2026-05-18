@@ -169,10 +169,11 @@ const payrollFormulaLabels: Array<[PayrollEmployeeViewColumn, string]> = [
   ["taxTotal", "(21)"],
   ["advanceTotal", "(22)"],
   ["deductionTotal", "(23)=(20)+(21)+(22)"],
-  ["netSalary", "(24)=(18)-(23)"],
-  ["dependentNote", "(25)"],
-  ["email", "(26)"],
-  ["status", "(27)"],
+  ["bonus", "(24)"],
+  ["netSalary", "(25)=(18)-(23)+(24)"],
+  ["dependentNote", "(26)"],
+  ["email", "(27)"],
+  ["status", "(28)"],
 ];
 
 const payrollFormulaColumnKeys: PayrollFormulaColumnKey[] = [
@@ -216,6 +217,7 @@ const inputColumnVariables: Partial<Record<PayrollEmployeeViewColumn, string[]>>
   insuranceSalary: ["luongBHXH", "baoHiemNgay"],
   workDay: ["ngayCong"],
   overtimeWorkDay: ["soGioTangCa"],
+  bonus: ["thuong"],
 };
 
 const payrollVariableNames: Record<string, string> = {
@@ -256,6 +258,7 @@ const payrollVariableNames: Record<string, string> = {
   bhxhNhanVien: "BHXH NLĐ",
   thueTNCN: "Thuế TNCN",
   tongGiamTru: "Tổng giảm trừ",
+  thuong: "Thưởng",
   thucNhan: "Thực nhận",
 };
 

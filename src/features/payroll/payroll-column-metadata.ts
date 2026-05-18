@@ -34,6 +34,7 @@ export const payrollColumnLabels: Record<PayrollEmployeeViewColumn, string> = {
   taxTotal: "Thuế TNCN",
   advanceTotal: "Tạm ứng",
   deductionTotal: "Tổng giảm trừ",
+  bonus: "Thưởng",
   netSalary: "Thực nhận",
   dependentNote: "Ghi chú NPT",
   status: "Trạng thái",

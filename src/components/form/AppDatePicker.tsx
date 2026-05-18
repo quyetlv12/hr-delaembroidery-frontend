@@ -2,6 +2,7 @@ import DatePicker from "react-datepicker";
 import { vi } from "date-fns/locale";
 import { Controller, type Control, type FieldValues, type Path } from "react-hook-form";
 
+import { smartDatePickerPopperModifiers, smartDatePickerPopperProps } from "./datePickerPopper";
 import { FormFieldShell } from "./FormFieldShell";
 
 type AppDatePickerProps<T extends FieldValues> = {
@@ -29,6 +30,9 @@ export function AppDatePicker<T extends FieldValues>({
             dateFormat="dd/MM/yyyy"
             locale={vi}
             popperClassName="hrm-datepicker-popper"
+            popperModifiers={smartDatePickerPopperModifiers}
+            popperPlacement="bottom-start"
+            popperProps={smartDatePickerPopperProps}
             placeholderText={placeholder}
             selected={parseDateValue(field.value as string | undefined)}
             onChange={(date: Date | null) => field.onChange(date ? formatDateValue(date) : "")}

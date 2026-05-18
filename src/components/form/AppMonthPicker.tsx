@@ -1,6 +1,7 @@
 import DatePicker from "react-datepicker";
 import { vi } from "date-fns/locale";
 
+import { smartDatePickerPopperModifiers, smartDatePickerPopperProps } from "./datePickerPopper";
 import { FormFieldShell } from "./FormFieldShell";
 
 type AppMonthPickerProps = {
@@ -19,6 +20,9 @@ export function AppMonthPicker({ label, value, onChange, placeholder }: AppMonth
         dateFormat="MM/yyyy"
         locale={vi}
         popperClassName="hrm-datepicker-popper"
+        popperModifiers={smartDatePickerPopperModifiers}
+        popperPlacement="bottom-end"
+        popperProps={smartDatePickerPopperProps}
         placeholderText={placeholder}
         selected={value}
         showMonthYearPicker

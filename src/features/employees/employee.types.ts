@@ -20,6 +20,7 @@ export type Employee = {
   joinDate: string;
   contractType?: string;
   salary: number;
+  monthlyBonus?: number;
   shiftCount: number;
   bankAccount?: string;
   bankName?: string;
@@ -32,6 +33,27 @@ export type EmployeeListQuery = {
   search?: string;
   departmentId?: string;
   status?: EmployeeStatus;
+  bonusMonth?: number;
+  bonusYear?: number;
+};
+
+export type EmployeeMonthlyBonusInput = {
+  month: number;
+  year: number;
+  amount: number;
+};
+
+export type EmployeeMonthlyBonusHistory = {
+  id: string;
+  employeeId?: string;
+  employeeCode?: string;
+  employeeName?: string;
+  month: number;
+  year: number;
+  previousBonus: number;
+  newBonus: number;
+  changedByLoginCode?: string;
+  createdAt: string;
 };
 
 export type EmployeeFormOptions = {

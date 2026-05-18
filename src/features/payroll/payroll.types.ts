@@ -39,6 +39,7 @@ export type SalaryRecord = {
   earnedSalary: number;
   allowanceTotal: number;
   bonusTotal: number;
+  bonus: number;
   overtimeTotal: number;
   grossSalary: number;
   employerInsuranceTotal: number;
@@ -73,6 +74,7 @@ export type PayrollRecordEditableField =
   | "taxTotal"
   | "advanceTotal"
   | "deductionTotal"
+  | "bonus"
   | "netSalary";
 
 export type PayrollRecordUpdateInput = Partial<Record<PayrollRecordEditableField, number>>;
@@ -93,6 +95,7 @@ export type PayrollRecordSnapshot = {
   earnedSalary: number;
   allowanceTotal: number;
   bonusTotal: number;
+  bonus: number;
   overtimeTotal: number;
   grossSalary: number;
   employerInsuranceTotal: number;

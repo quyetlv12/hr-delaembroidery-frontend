@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Banknote, Eye, Pencil, Plus, TrendingUp, Trash2 } from "lucide-react";
+import { Banknote, Eye, Gift, Pencil, Plus, TrendingUp, Trash2 } from "lucide-react";
 import CurrencyInput from "react-currency-input-field";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -17,12 +17,22 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { DataTable } from "@/components/table/DataTable";
+import { AppMonthPicker } from "@/components/form/AppMonthPicker";
 import { permissions } from "@/constants/permissions";
+import { usePermission } from "@/hooks/use-permission";
 import { confirmDelete } from "@/lib/confirm";
 import { showApiError, showSuccess, showWarning } from "@/lib/toast";
 
-import { deleteEmployee, getEmployees, increaseEmployeeSalaries, updateEmployeeSalary } from "./employee.service";
+import {
+  deleteEmployee,
+  getEmployees,
+  increaseEmployeeSalaries,
+  updateEmployeeMonthlyBonus,
+  updateEmployeeSalary,
+} from "./employee.service";
 import type { Employee, SalaryIncreaseInput } from "./employee.types";
+
+const currencyFormatter = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 });
 
 const statusTone = {
   active: "success",
@@ -39,10 +49,16 @@ const statusLabel = {
 export function EmployeesPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const canUpdateEmployees = usePermission(permissions.employeesUpdate);
+  const now = new Date();
+  const [periodDate, setPeriodDate] = useState(new Date(now.getFullYear(), now.getMonth(), 1));
   const [salaryIncreaseEmployee, setSalaryIncreaseEmployee] = useState<Employee | null>(null);
+  const month = periodDate.getMonth() + 1;
+  const year = periodDate.getFullYear();
+  const employeesQueryKey = useMemo(() => ["employees", month, year] as const, [month, year]);
   const employeesQuery = useQuery({
-    queryKey: ["employees"],
-    queryFn: () => getEmployees(),
+    queryKey: employeesQueryKey,
+    queryFn: () => getEmployees({ bonusMonth: month, bonusYear: year }),
   });
 
   const deleteMutation = useMutation({
@@ -59,11 +75,28 @@ export function EmployeesPage() {
     mutationFn: ({ id, salary }: { id: string; salary: number }) => updateEmployeeSalary(id, salary),
     onSuccess(employee) {
       showSuccess("Đã cập nhật lương nhân viên");
-      queryClient.setQueryData<Employee[]>(["employees"], (current) =>
+      queryClient.setQueryData<Employee[]>(employeesQueryKey, (current) =>
         current?.map((item) => (item.id === employee.id ? employee : item)),
       );
       void queryClient.invalidateQueries({ queryKey: ["employees"] });
       void queryClient.invalidateQueries({ queryKey: ["payroll"] });
+    },
+    onError(error) {
+      showApiError(error);
+    },
+  });
+  const monthlyBonusMutation = useMutation({
+    mutationFn: ({ id, amount, bonusMonth, bonusYear }: { id: string; amount: number; bonusMonth: number; bonusYear: number }) =>
+      updateEmployeeMonthlyBonus(id, { month: bonusMonth, year: bonusYear, amount }),
+    onSuccess(employee, variables) {
+      showSuccess("Đã cập nhật thưởng tháng");
+      queryClient.setQueryData<Employee[]>(["employees", variables.bonusMonth, variables.bonusYear], (current) =>
+        current?.map((item) => (item.id === employee.id ? employee : item)),
+      );
+      void queryClient.invalidateQueries({ queryKey: ["employees"] });
+      void queryClient.invalidateQueries({ queryKey: ["employee-monthly-bonus-history", employee.id] });
+      void queryClient.invalidateQueries({ queryKey: ["payroll", variables.bonusMonth, variables.bonusYear] });
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
     },
     onError(error) {
       showApiError(error);
@@ -110,6 +143,22 @@ export function EmployeesPage() {
     [salaryIncreaseEmployee, salaryIncreaseMutation],
   );
 
+  const handleUpdateMonthlyBonus = useCallback(
+    (employee: Employee, amount: number, bonusDate: Date) => {
+      const bonusMonth = bonusDate.getMonth() + 1;
+      const bonusYear = bonusDate.getFullYear();
+      const isCurrentPeriod = bonusMonth === month && bonusYear === year;
+      if (isCurrentPeriod && Math.abs(amount - Number(employee.monthlyBonus ?? 0)) < 1) {
+        return;
+      }
+      if (!isCurrentPeriod) {
+        setPeriodDate(new Date(bonusYear, bonusMonth - 1, 1));
+      }
+      monthlyBonusMutation.mutate({ id: employee.id, amount, bonusMonth, bonusYear });
+    },
+    [month, monthlyBonusMutation, year],
+  );
+
   const handleDeleteEmployee = useCallback(
     async (employee: Employee) => {
       const confirmed = await confirmDelete(employee.fullName);
@@ -152,7 +201,22 @@ export function EmployeesPage() {
           <EditableSalaryCell
             employee={row.original}
             isSaving={salaryMutation.isPending}
+            key={`${row.original.id}-${row.original.salary}`}
             onSave={(salary) => handleUpdateSalary(row.original, salary)}
+          />
+        ),
+      },
+      {
+        header: "Thưởng",
+        accessorKey: "monthlyBonus",
+        cell: ({ row }) => (
+          <EditableMonthlyBonusCell
+            employee={row.original}
+            isEditable={canUpdateEmployees && row.original.status !== "inactive"}
+            isSaving={monthlyBonusMutation.isPending}
+            key={`${row.original.id}-${row.original.monthlyBonus ?? 0}`}
+            periodDate={periodDate}
+            onSave={(amount, bonusDate) => handleUpdateMonthlyBonus(row.original, amount, bonusDate)}
           />
         ),
       },
@@ -207,7 +271,16 @@ export function EmployeesPage() {
         ),
       },
     ],
-    [handleDeleteEmployee, handleUpdateSalary, navigate, salaryMutation.isPending],
+    [
+      canUpdateEmployees,
+      handleDeleteEmployee,
+      handleUpdateMonthlyBonus,
+      handleUpdateSalary,
+      monthlyBonusMutation.isPending,
+      navigate,
+      periodDate,
+      salaryMutation.isPending,
+    ],
   );
 
   return (
@@ -224,6 +297,24 @@ export function EmployeesPage() {
         description="Quản lý hồ sơ, lương, tài khoản ngân hàng, ảnh đại diện và giấy tờ nhân viên."
         title="Nhân viên"
       />
+      <section className="rounded-lg border border-border bg-card px-4 py-4 shadow-sm md:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <Gift size={18} />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-card-foreground">Thưởng theo kỳ</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Nhập thưởng trực tiếp theo từng tháng. Khoản này cộng vào thực nhận, không đổi lương cơ bản.
+              </p>
+            </div>
+          </div>
+          <div className="w-full sm:w-56">
+            <AppMonthPicker label="Kỳ thưởng" value={periodDate} onChange={setPeriodDate} />
+          </div>
+        </div>
+      </section>
       <DataTable
         columns={columns}
         data={employeesQuery.data ?? []}
@@ -274,19 +365,94 @@ function EditableSalaryCell({
   };
 
   return (
+    <div className="group/salary relative inline-flex min-w-44 items-center">
+      <CurrencyInput
+        allowDecimals={false}
+        allowNegativeValue={false}
+        className="h-10 w-full rounded-lg border border-sky-200 bg-sky-50 px-3 pr-10 text-right font-bold tabular-nums text-sky-800 outline-none shadow-[inset_0_0_0_1px_rgba(186,230,253,0.35)] transition hover:border-sky-300 hover:bg-sky-100/70 focus:border-sky-500 focus:bg-white focus:ring-2 focus:ring-sky-200 disabled:cursor-wait disabled:opacity-70"
+        decimalSeparator=","
+        decimalsLimit={0}
+        disabled={isSaving}
+        groupSeparator="."
+        inputMode="numeric"
+        key={`${employee.id}-${employee.salary}`}
+        maxLength={15}
+        suffix=" đ"
+        title="Sửa lương rồi nhấn Enter hoặc rời ô để lưu"
+        value={draftValue}
+        onBlur={commit}
+        onFocus={(event) => event.currentTarget.select()}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.currentTarget.blur();
+          }
+          if (event.key === "Escape") {
+            cancelCommitRef.current = true;
+            setDraftValue(employee.salary);
+            event.currentTarget.blur();
+          }
+        }}
+        onValueChange={(nextValue) => setDraftValue(nextValue ? Number(nextValue) : 0)}
+      />
+      <Pencil
+        aria-hidden="true"
+        className="pointer-events-none absolute right-3 text-sky-500 opacity-65 transition group-hover/salary:opacity-100"
+        size={14}
+      />
+    </div>
+  );
+}
+
+function EditableMonthlyBonusCell({
+  employee,
+  isEditable,
+  isSaving,
+  periodDate,
+  onSave,
+}: {
+  employee: Employee;
+  isEditable: boolean;
+  isSaving: boolean;
+  periodDate: Date;
+  onSave: (amount: number, bonusDate: Date) => void;
+}) {
+  const value = Number(employee.monthlyBonus ?? 0);
+  const [draftValue, setDraftValue] = useState(value);
+  const cancelCommitRef = useRef(false);
+
+  const commit = () => {
+    if (cancelCommitRef.current) {
+      cancelCommitRef.current = false;
+      return;
+    }
+    if (!Number.isFinite(draftValue) || draftValue < 0) {
+      showWarning("Nhập số tiền thưởng hợp lệ.");
+      setDraftValue(value);
+      return;
+    }
+    if (Math.abs(draftValue - value) < 1) {
+      return;
+    }
+    onSave(draftValue, periodDate);
+  };
+
+  if (!isEditable) {
+    return <span className="block min-w-36 text-right font-semibold tabular-nums">{currencyFormatter.format(value)}</span>;
+  }
+
+  return (
     <CurrencyInput
       allowDecimals={false}
       allowNegativeValue={false}
-      className="h-9 min-w-36 rounded-md border border-transparent bg-transparent px-2 text-right font-semibold tabular-nums text-card-foreground outline-none transition hover:border-border hover:bg-muted/40 focus:border-ring focus:bg-background focus:ring-2 focus:ring-ring/20 disabled:cursor-wait disabled:opacity-70"
+      className="h-9 min-w-40 rounded-md border border-emerald-200 bg-emerald-50 px-2 text-right font-semibold tabular-nums text-emerald-700 outline-none transition hover:border-emerald-300 hover:bg-emerald-100/70 focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-200 disabled:cursor-wait disabled:opacity-70"
       decimalSeparator=","
       decimalsLimit={0}
       disabled={isSaving}
       groupSeparator="."
       inputMode="numeric"
-      key={`${employee.id}-${employee.salary}`}
       maxLength={15}
       suffix=" đ"
-      title="Sửa lương rồi nhấn Enter hoặc rời ô để lưu"
+      title="Nhập thưởng rồi nhấn Enter hoặc rời ô để lưu"
       value={draftValue}
       onBlur={commit}
       onFocus={(event) => event.currentTarget.select()}
@@ -296,7 +462,7 @@ function EditableSalaryCell({
         }
         if (event.key === "Escape") {
           cancelCommitRef.current = true;
-          setDraftValue(employee.salary);
+          setDraftValue(value);
           event.currentTarget.blur();
         }
       }}

@@ -5,6 +5,8 @@ import type {
   Employee,
   EmployeeDocument,
   EmployeeListQuery,
+  EmployeeMonthlyBonusInput,
+  EmployeeMonthlyBonusHistory,
   EmployeeSalaryHistory,
   SalaryIncreaseInput,
   SalaryIncreaseResult,
@@ -65,6 +67,13 @@ export async function getEmployeeSalaryHistory(id: string) {
   return unwrapApiResponse(response.data);
 }
 
+export async function getEmployeeMonthlyBonusHistory(id: string) {
+  const response = await api.get<ApiResponse<EmployeeMonthlyBonusHistory[]>>(
+    `/employees/${normalizeEmployeeId(id)}/monthly-bonus-history`,
+  );
+  return unwrapApiResponse(response.data);
+}
+
 export async function getEmployeeSalaryHistories() {
   const response = await api.get<ApiResponse<EmployeeSalaryHistory[]>>("/employees/salary-history");
   return unwrapApiResponse(response.data);
@@ -102,6 +111,11 @@ export async function deleteEmployeeDocument(id: string, documentId: string) {
 
 export async function updateEmployeeSalary(id: string, salary: number) {
   const response = await api.patch<ApiResponse<Employee>>(`/employees/${normalizeEmployeeId(id)}/salary`, { salary });
+  return unwrapApiResponse(response.data);
+}
+
+export async function updateEmployeeMonthlyBonus(id: string, values: EmployeeMonthlyBonusInput) {
+  const response = await api.patch<ApiResponse<Employee>>(`/employees/${normalizeEmployeeId(id)}/monthly-bonus`, values);
   return unwrapApiResponse(response.data);
 }
 
