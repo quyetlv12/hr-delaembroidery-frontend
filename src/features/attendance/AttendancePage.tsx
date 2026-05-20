@@ -960,6 +960,11 @@ function toTimeInputValue(value?: string) {
     return "";
   }
 
+  const directMatch = value.match(/(?:T|\s|^)([01]\d|2[0-3]):([0-5]\d)/);
+  if (directMatch) {
+    return `${directMatch[1]}:${directMatch[2]}`;
+  }
+
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return "";
