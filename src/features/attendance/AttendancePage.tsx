@@ -960,17 +960,38 @@ function toTimeInputValue(value?: string) {
     return "";
   }
 
-  const directMatch = value.match(/(?:T|\s|^)([01]\d|2[0-3]):([0-5]\d)/);
+  const normalized = value.trim();
+  if (!normalized) {
+    return "";
+  }
+
+  if (hasExplicitTimezone(normalized)) {
+    return formatVietnamTime(new Date(normalized));
+  }
+
+  const directMatch = normalized.match(/(?:T|\s|^)([01]\d|2[0-3]):([0-5]\d)/);
   if (directMatch) {
     return `${directMatch[1]}:${directMatch[2]}`;
   }
 
-  const date = new Date(value);
+  const date = new Date(normalized);
+  return formatVietnamTime(date);
+}
+
+function hasExplicitTimezone(value: string) {
+  return /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value);
+}
+
+function formatVietnamTime(date: Date) {
   if (Number.isNaN(date.getTime())) {
     return "";
   }
 
-  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  const vietnamTime = new Date(date.getTime() + 7 * 60 * 60 * 1000);
+  return `${String(vietnamTime.getUTCHours()).padStart(2, "0")}:${String(vietnamTime.getUTCMinutes()).padStart(
+    2,
+    "0",
+  )}`;
 }
 
 function formatMinutesText(value: number) {

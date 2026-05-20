@@ -2,6 +2,16 @@ export type DashboardSummary = {
   totalEmployees: number;
   activeEmployees: number;
   todayLateEmployees: number;
+  todayLateEmployeeRows: Array<{
+    employeeId: string;
+    employeeCode: string;
+    fullName: string;
+    avatarUrl: string | null;
+    departmentName: string;
+    positionName: string;
+    lateMinutes: number;
+    firstCheckInAt: string | null;
+  }>;
   monthlyPayroll: number;
   overtimeHours: number;
   payrollByMonth: Array<{ month: string; amount: number }>;

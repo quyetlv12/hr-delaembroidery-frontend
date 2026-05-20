@@ -234,6 +234,83 @@ function AbsentEmployeesCard({
   );
 }
 
+function LateEmployeesCard({
+  rows,
+}: {
+  rows: Array<{
+    employeeId: string;
+    employeeCode: string;
+    fullName: string;
+    avatarUrl: string | null;
+    departmentName: string;
+    positionName: string;
+    lateMinutes: number;
+    firstCheckInAt: string | null;
+  }>;
+}) {
+  const visibleRows = rows.slice(0, 10);
+  const hiddenCount = Math.max(0, rows.length - visibleRows.length);
+
+  return (
+    <section className="rounded-xl border border-rose-200 bg-rose-50/70 p-5 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-rose-100 text-rose-700">
+            <Clock size={20} />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-rose-950">Nhân viên đi trễ hôm nay</h2>
+            <p className="mt-1 text-xs font-medium text-rose-800/80">
+              Danh sách sắp xếp theo số phút trễ giảm dần.
+            </p>
+          </div>
+        </div>
+        <span className="rounded-full bg-background px-3 py-1 text-sm font-bold tabular-nums text-rose-700">
+          {rows.length} người
+        </span>
+      </div>
+
+      {rows.length === 0 ? (
+        <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+          Chưa có nhân viên đi trễ trong ngày hôm nay.
+        </div>
+      ) : (
+        <div className="mt-4 space-y-2">
+          {visibleRows.map((employee) => (
+            <div
+              className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-rose-200 bg-background px-3 py-2"
+              key={employee.employeeId}
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <EmployeeAvatar employee={employee} />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-foreground">
+                    {employee.employeeCode} · {employee.fullName}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {employee.departmentName} · {employee.positionName}
+                  </p>
+                </div>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="text-sm font-bold tabular-nums text-rose-700">{employee.lateMinutes} phút</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {employee.firstCheckInAt ? `Vào ${employee.firstCheckInAt}` : "Chưa rõ giờ vào"}
+                </p>
+              </div>
+            </div>
+          ))}
+          {hiddenCount > 0 ? (
+            <div className="rounded-lg border border-dashed border-rose-300 bg-background/70 px-3 py-2 text-center text-sm font-semibold text-rose-700">
+              +{hiddenCount} người khác
+            </div>
+          ) : null}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function EmployeeAvatar({
   employee,
 }: {
@@ -358,6 +435,7 @@ export function DashboardPage() {
           employeeGrowth={summaryQuery.data.employeeGrowth}
           employeesByDepartment={summaryQuery.data.employeesByDepartment}
           payrollByMonth={summaryQuery.data.payrollByMonth}
+          todayLateEmployeeRows={summaryQuery.data.todayLateEmployeeRows ?? []}
           todayShiftAbsences={summaryQuery.data.todayShiftAbsences}
           stats={{
             totalEmployees: summaryQuery.data.totalEmployees,
@@ -380,6 +458,7 @@ function DashboardContent({
   attendanceByDay,
   employeeGrowth,
   todayShiftAbsences,
+  todayLateEmployeeRows,
 }: {
   stats: {
     totalEmployees: number;
@@ -392,6 +471,16 @@ function DashboardContent({
   employeesByDepartment: Array<{ department: string; total: number }>;
   attendanceByDay: Array<{ day: string; present: number; late: number }>;
   employeeGrowth: Array<{ month: string; total: number }>;
+  todayLateEmployeeRows: Array<{
+    employeeId: string;
+    employeeCode: string;
+    fullName: string;
+    avatarUrl: string | null;
+    departmentName: string;
+    positionName: string;
+    lateMinutes: number;
+    firstCheckInAt: string | null;
+  }>;
   todayShiftAbsences: {
     date: string;
     shiftKey: "morning" | "afternoon" | "night" | "none";
@@ -479,7 +568,10 @@ function DashboardContent({
         })}
       </section>
 
-      <AbsentEmployeesCard data={todayShiftAbsences} />
+      <section className="grid gap-4 xl:grid-cols-2">
+        <AbsentEmployeesCard data={todayShiftAbsences} />
+        <LateEmployeesCard rows={todayLateEmployeeRows} />
+      </section>
 
       {/* ── Charts row 1 ── */}
       <section className="grid gap-4 xl:grid-cols-3">
