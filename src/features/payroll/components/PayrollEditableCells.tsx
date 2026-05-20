@@ -40,12 +40,12 @@ export function EditableNumberCell({
   return (
     <td
       className={cn(
-        "whitespace-nowrap border border-border p-0 text-right tabular-nums text-card-foreground",
+        "cursor-text whitespace-nowrap border border-border p-0 text-right tabular-nums text-card-foreground",
         payrollRowHoverCellClass,
       )}
     >
       <input
-        className="h-full min-h-10 w-full whitespace-nowrap border-0 bg-transparent px-3 py-2.5 text-right font-semibold tabular-nums text-inherit outline-none transition focus:bg-background focus:ring-2 focus:ring-inset focus:ring-ring/30 disabled:cursor-wait disabled:opacity-70"
+        className="h-full min-h-10 w-full cursor-text whitespace-nowrap border-0 bg-transparent px-3 py-2.5 text-right font-semibold tabular-nums text-inherit outline-none transition focus:bg-background focus:ring-2 focus:ring-inset focus:ring-ring/30 disabled:cursor-wait disabled:opacity-70"
         defaultValue={formattedValue}
         disabled={edit.isSaving}
         inputMode="decimal"
@@ -104,7 +104,7 @@ export function EditableMoneyCell({
   return (
     <td
       className={cn(
-        "whitespace-nowrap border border-border p-0 text-right tabular-nums",
+        "cursor-text whitespace-nowrap border border-border p-0 text-right tabular-nums",
         payrollRowHoverCellClass,
         className ?? "text-card-foreground",
       )}
@@ -113,7 +113,7 @@ export function EditableMoneyCell({
         <CurrencyInput
           allowDecimals={false}
           allowNegativeValue={false}
-          className="h-full min-h-10 min-w-24 flex-1 whitespace-nowrap border-0 bg-transparent py-2.5 text-right font-semibold tabular-nums text-inherit outline-none transition focus:bg-background focus:ring-2 focus:ring-inset focus:ring-ring/30 disabled:cursor-wait disabled:opacity-70"
+          className="h-full min-h-10 min-w-24 flex-1 cursor-text whitespace-nowrap border-0 bg-transparent py-2.5 text-right font-semibold tabular-nums text-inherit outline-none transition focus:bg-background focus:ring-2 focus:ring-inset focus:ring-ring/30 disabled:cursor-wait disabled:opacity-70"
           decimalSeparator=","
           decimalsLimit={0}
           disabled={edit.isSaving}

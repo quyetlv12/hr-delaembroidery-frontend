@@ -44,6 +44,16 @@ const AttendanceImportPage = lazy(() =>
     default: module.AttendanceImportPage,
   })),
 );
+const AttendanceServerSyncTestPage = lazy(() =>
+  import("@/features/attendance/AttendanceServerSyncTestPage").then((module) => ({
+    default: module.AttendanceServerSyncTestPage,
+  })),
+);
+const AttendanceServerSettingsPage = lazy(() =>
+  import("@/features/attendance/AttendanceServerSettingsPage").then((module) => ({
+    default: module.AttendanceServerSettingsPage,
+  })),
+);
 const AttendanceSettingsPage = lazy(() =>
   import("@/features/attendance/AttendanceSettingsPage").then((module) => ({
     default: module.AttendanceSettingsPage,
@@ -169,6 +179,22 @@ export function AppRouter() {
               </ProtectedRoute>
             }
             path="attendance/import"
+          />
+          <Route
+            element={
+              <ProtectedRoute permission={permissions.attendanceImport}>
+                <AttendanceServerSyncTestPage />
+              </ProtectedRoute>
+            }
+            path="attendance/server-sync-test"
+          />
+          <Route
+            element={
+              <ProtectedRoute permission={permissions.attendanceImport}>
+                <AttendanceServerSettingsPage />
+              </ProtectedRoute>
+            }
+            path="attendance/server-sync-settings"
           />
           <Route
             element={

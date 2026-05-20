@@ -6,6 +6,7 @@ import {
   History,
   Lock,
   LockOpen,
+  RotateCcw,
   Search,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -34,6 +35,7 @@ import {
   getPayrollFormulaSetting,
   getPayrollFormulaTemplates,
   lockPayroll,
+  restorePayrollBonuses,
   unlockPayroll,
   updatePayrollRecord,
 } from "./payroll.service";
@@ -115,6 +117,27 @@ export function PayrollPage() {
       setFormulaPickerOpen(false);
       showSuccess("Tính lương thành công");
       void queryClient.invalidateQueries({ queryKey: ["payroll"] });
+      void queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
+    },
+    onError(error) {
+      showApiError(error);
+    },
+  });
+
+  const restoreBonusesMutation = useMutation({
+    mutationFn: () => restorePayrollBonuses(month, year),
+    onSuccess(payroll) {
+      queryClient.setQueryData(
+        [
+          "payroll",
+          payroll.period?.month ?? month,
+          payroll.period?.year ?? year,
+        ],
+        payroll,
+      );
+      showSuccess("Đã khôi phục thưởng theo kỳ");
+      void queryClient.invalidateQueries({ queryKey: ["payroll"] });
+      void queryClient.invalidateQueries({ queryKey: ["employees"] });
       void queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
     },
     onError(error) {
@@ -282,6 +305,16 @@ export function PayrollPage() {
               >
                 <Calculator size={18} />
                 {calculateMutation.isPending ? "Đang tính..." : "Tính lại"}
+              </Button>
+            </RequirePermission>
+            <RequirePermission permission={permissions.payrollCalculate}>
+              <Button
+                disabled={restoreBonusesMutation.isPending || isLocked}
+                variant="secondary"
+                onClick={() => restoreBonusesMutation.mutate()}
+              >
+                <RotateCcw size={18} />
+                {restoreBonusesMutation.isPending ? "Đang khôi phục..." : "Khôi phục thưởng"}
               </Button>
             </RequirePermission>
             <RequirePermission permission={permissions.payrollRead}>

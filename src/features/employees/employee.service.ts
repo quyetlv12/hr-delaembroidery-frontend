@@ -114,6 +114,13 @@ export async function updateEmployeeSalary(id: string, salary: number) {
   return unwrapApiResponse(response.data);
 }
 
+export async function updateEmployeeTimekeepingCode(id: string, timekeepingCode: string) {
+  const response = await api.patch<ApiResponse<Employee>>(`/employees/${normalizeEmployeeId(id)}/timekeeping-code`, {
+    timekeepingCode: timekeepingCode.trim() || null,
+  });
+  return unwrapApiResponse(response.data);
+}
+
 export async function updateEmployeeMonthlyBonus(id: string, values: EmployeeMonthlyBonusInput) {
   const response = await api.patch<ApiResponse<Employee>>(`/employees/${normalizeEmployeeId(id)}/monthly-bonus`, values);
   return unwrapApiResponse(response.data);

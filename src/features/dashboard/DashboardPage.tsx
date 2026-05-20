@@ -6,6 +6,7 @@ import {
   DollarSign,
   TrendingUp,
   UserCheck,
+  UserX,
   Users,
 } from "lucide-react";
 import {
@@ -149,6 +150,120 @@ function EmptyChart({ label }: { label: string }) {
   );
 }
 
+function AbsentEmployeesCard({
+  data,
+}: {
+  data: {
+    date: string;
+    shiftKey: "morning" | "afternoon" | "night" | "none";
+    shiftLabel: string;
+    startTime: string | null;
+    endTime: string | null;
+    total: number;
+    rows: Array<{
+      employeeId: string;
+      employeeCode: string;
+      fullName: string;
+      avatarUrl: string | null;
+      departmentName: string;
+      positionName: string;
+      shiftCount: number;
+    }>;
+  };
+}) {
+  const visibleRows = data.rows.slice(0, 8);
+  const hiddenCount = Math.max(0, data.total - visibleRows.length);
+
+  return (
+    <section className="rounded-xl border border-amber-200 bg-amber-50/70 p-5 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+            <UserX size={20} />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-amber-950">
+              Nhân viên chưa chấm công {data.shiftKey === "none" ? "" : data.shiftLabel.toLowerCase()}
+            </h2>
+            <p className="mt-1 text-xs font-medium text-amber-800/80">
+              {data.shiftKey === "none"
+                ? "Hiện không nằm trong khung giờ ca làm cần theo dõi."
+                : `Ngày ${formatDashboardDate(data.date)} · ${data.startTime} - ${data.endTime}`}
+            </p>
+          </div>
+        </div>
+        <span className="rounded-full bg-background px-3 py-1 text-sm font-bold tabular-nums text-amber-700">
+          {data.total} người
+        </span>
+      </div>
+
+      {data.shiftKey === "none" ? (
+        <div className="mt-4 rounded-lg border border-amber-200 bg-background/80 px-4 py-3 text-sm text-muted-foreground">
+          Danh sách sẽ tự hiển thị khi đến giờ ca sáng, ca chiều hoặc ca 3.
+        </div>
+      ) : data.total === 0 ? (
+        <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+          Tất cả nhân viên thuộc {data.shiftLabel.toLowerCase()} đã có lượt chấm công vào ca.
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+          {visibleRows.map((employee) => (
+            <div
+              className="flex min-w-0 items-center gap-3 rounded-lg border border-amber-200 bg-background px-3 py-2"
+              key={employee.employeeId}
+            >
+              <EmployeeAvatar employee={employee} />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-foreground">
+                  {employee.employeeCode} · {employee.fullName}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {employee.departmentName} · {employee.positionName}
+                </p>
+              </div>
+            </div>
+          ))}
+          {hiddenCount > 0 ? (
+            <div className="flex items-center justify-center rounded-lg border border-dashed border-amber-300 bg-background/70 px-3 py-2 text-sm font-semibold text-amber-700">
+              +{hiddenCount} người khác
+            </div>
+          ) : null}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function EmployeeAvatar({
+  employee,
+}: {
+  employee: {
+    fullName: string;
+    avatarUrl: string | null;
+  };
+}) {
+  if (employee.avatarUrl) {
+    return (
+      <img
+        alt={employee.fullName}
+        className="h-9 w-9 shrink-0 rounded-lg border border-border bg-muted object-cover"
+        src={employee.avatarUrl}
+      />
+    );
+  }
+
+  return (
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-amber-200 bg-amber-100 text-sm font-bold text-amber-700">
+      {employee.fullName.trim().charAt(0).toUpperCase() || "?"}
+    </span>
+  );
+}
+
+function formatDashboardDate(value: string) {
+  const [year, month, day] = value.split("-");
+  return `${day}/${month}/${year}`;
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export function DashboardPage() {
   const defaultRange = useMemo(() => getDefaultRange(), []);
@@ -243,6 +358,7 @@ export function DashboardPage() {
           employeeGrowth={summaryQuery.data.employeeGrowth}
           employeesByDepartment={summaryQuery.data.employeesByDepartment}
           payrollByMonth={summaryQuery.data.payrollByMonth}
+          todayShiftAbsences={summaryQuery.data.todayShiftAbsences}
           stats={{
             totalEmployees: summaryQuery.data.totalEmployees,
             activeEmployees: summaryQuery.data.activeEmployees,
@@ -263,6 +379,7 @@ function DashboardContent({
   employeesByDepartment,
   attendanceByDay,
   employeeGrowth,
+  todayShiftAbsences,
 }: {
   stats: {
     totalEmployees: number;
@@ -275,6 +392,23 @@ function DashboardContent({
   employeesByDepartment: Array<{ department: string; total: number }>;
   attendanceByDay: Array<{ day: string; present: number; late: number }>;
   employeeGrowth: Array<{ month: string; total: number }>;
+  todayShiftAbsences: {
+    date: string;
+    shiftKey: "morning" | "afternoon" | "night" | "none";
+    shiftLabel: string;
+    startTime: string | null;
+    endTime: string | null;
+    total: number;
+    rows: Array<{
+      employeeId: string;
+      employeeCode: string;
+      fullName: string;
+      avatarUrl: string | null;
+      departmentName: string;
+      positionName: string;
+      shiftCount: number;
+    }>;
+  };
 }) {
   const statCards: StatCard[] = [
     {
@@ -344,6 +478,8 @@ function DashboardContent({
           );
         })}
       </section>
+
+      <AbsentEmployeesCard data={todayShiftAbsences} />
 
       {/* ── Charts row 1 ── */}
       <section className="grid gap-4 xl:grid-cols-3">

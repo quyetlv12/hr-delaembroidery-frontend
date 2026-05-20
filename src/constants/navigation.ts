@@ -7,6 +7,8 @@ import {
   Calculator,
   FileBarChart,
   History,
+  RefreshCw,
+  ServerCog,
   Settings,
   ShieldCheck,
   Users,
@@ -51,6 +53,18 @@ export const navItems: NavItem[] = [
     path: "/attendance",
     permission: permissions.attendanceRead,
     icon: CalendarClock,
+  },
+  {
+    label: "Test đồng bộ",
+    path: "/attendance/server-sync-test",
+    permission: permissions.attendanceImport,
+    icon: RefreshCw,
+  },
+  {
+    label: "Máy chấm công",
+    path: "/attendance/server-sync-settings",
+    permission: permissions.attendanceImport,
+    icon: ServerCog,
   },
   {
     label: "Cài đặt chấm công",

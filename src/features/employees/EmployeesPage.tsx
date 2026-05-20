@@ -1,6 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { Banknote, Eye, Gift, Pencil, Plus, TrendingUp, Trash2 } from "lucide-react";
+import {
+  Banknote,
+  Check,
+  Eye,
+  Gift,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Search,
+  TrendingUp,
+  Trash2,
+} from "lucide-react";
 import CurrencyInput from "react-currency-input-field";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -16,9 +27,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { DataTable } from "@/components/table/DataTable";
 import { AppMonthPicker } from "@/components/form/AppMonthPicker";
 import { permissions } from "@/constants/permissions";
+import {
+  getAttendanceServerSettings,
+  listSavedAttendanceServerStaff,
+  syncAttendanceServerStaff,
+} from "@/features/attendance/attendance.service";
+import type { AttendanceServerStaffRow } from "@/features/attendance/attendance.types";
 import { usePermission } from "@/hooks/use-permission";
 import { confirmDelete } from "@/lib/confirm";
 import { showApiError, showSuccess, showWarning } from "@/lib/toast";
@@ -29,10 +54,12 @@ import {
   increaseEmployeeSalaries,
   updateEmployeeMonthlyBonus,
   updateEmployeeSalary,
+  updateEmployeeTimekeepingCode,
 } from "./employee.service";
 import type { Employee, SalaryIncreaseInput } from "./employee.types";
 
 const currencyFormatter = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 });
+const DEFAULT_STAFF_ENDPOINT = "https://global.yunatt.com/staff/query";
 
 const statusTone = {
   active: "success",
@@ -60,6 +87,15 @@ export function EmployeesPage() {
     queryKey: employeesQueryKey,
     queryFn: () => getEmployees({ bonusMonth: month, bonusYear: year }),
   });
+  const savedStaffQuery = useQuery({
+    queryKey: ["attendance-server-staff", "employees-picker"],
+    queryFn: () => listSavedAttendanceServerStaff({ offset: 0, limit: 200, search: "" }),
+  });
+  const serverSettingsQuery = useQuery({
+    queryKey: ["attendance-server-settings"],
+    queryFn: getAttendanceServerSettings,
+    staleTime: 60_000,
+  });
 
   const deleteMutation = useMutation({
     mutationFn: deleteEmployee,
@@ -80,6 +116,39 @@ export function EmployeesPage() {
       );
       void queryClient.invalidateQueries({ queryKey: ["employees"] });
       void queryClient.invalidateQueries({ queryKey: ["payroll"] });
+    },
+    onError(error) {
+      showApiError(error);
+    },
+  });
+  const timekeepingCodeMutation = useMutation({
+    mutationFn: ({ id, timekeepingCode }: { id: string; timekeepingCode: string }) =>
+      updateEmployeeTimekeepingCode(id, timekeepingCode),
+    onSuccess(employee) {
+      showSuccess("Đã cập nhật nhân viên máy chấm công");
+      queryClient.setQueryData<Employee[]>(employeesQueryKey, (current) =>
+        current?.map((item) => (item.id === employee.id ? employee : item)),
+      );
+      void queryClient.invalidateQueries({ queryKey: ["employees"] });
+    },
+    onError(error) {
+      showApiError(error);
+    },
+  });
+  const syncStaffMutation = useMutation({
+    mutationFn: () =>
+      syncAttendanceServerStaff({
+        endpoint: serverSettingsQuery.data?.staffEndpoint || DEFAULT_STAFF_ENDPOINT,
+        cookie: undefined,
+        sort: "staff_number",
+        order: "asc",
+        offset: 0,
+        limit: 200,
+        search: "",
+      }),
+    onSuccess(data) {
+      showSuccess(`Đã đồng bộ ${data.savedRows} nhân viên máy chấm công`);
+      void queryClient.invalidateQueries({ queryKey: ["attendance-server-staff"] });
     },
     onError(error) {
       showApiError(error);
@@ -124,6 +193,24 @@ export function EmployeesPage() {
     },
     [salaryMutation],
   );
+
+  const handleUpdateTimekeepingCode = useCallback(
+    (employee: Employee, timekeepingCode: string) => {
+      if (timekeepingCode.trim() === (employee.timekeepingCode ?? "")) {
+        return;
+      }
+      timekeepingCodeMutation.mutate({ id: employee.id, timekeepingCode });
+    },
+    [timekeepingCodeMutation],
+  );
+
+  const handleSyncAttendanceStaff = useCallback(() => {
+    if (serverSettingsQuery.data && !serverSettingsQuery.data.hasCookie) {
+      showWarning("Chưa có cookie máy chấm công. Vào màn hình Máy chấm công để lưu cookie trước.");
+      return;
+    }
+    syncStaffMutation.mutate();
+  }, [serverSettingsQuery.data, syncStaffMutation]);
 
   const handleIncreaseSalary = useCallback(
     (values: Omit<SalaryIncreaseInput, "employeeIds">) => {
@@ -174,6 +261,23 @@ export function EmployeesPage() {
       {
         header: "Mã NV",
         accessorKey: "employeeCode",
+      },
+      {
+        header: "Máy chấm công",
+        accessorKey: "timekeepingCode",
+        cell: ({ row }) => (
+          <EditableTimekeepingCodeCell
+            employee={row.original}
+            isEditable={canUpdateEmployees}
+            isSaving={timekeepingCodeMutation.isPending}
+            isStaffLoading={savedStaffQuery.isFetching || syncStaffMutation.isPending}
+            isStaffSyncing={syncStaffMutation.isPending}
+            key={`${row.original.id}-${row.original.timekeepingCode ?? ""}`}
+            serverStaffRows={savedStaffQuery.data?.rows ?? []}
+            onSync={handleSyncAttendanceStaff}
+            onSave={(timekeepingCode) => handleUpdateTimekeepingCode(row.original, timekeepingCode)}
+          />
+        ),
       },
       {
         header: "Mã đăng nhập",
@@ -276,10 +380,16 @@ export function EmployeesPage() {
       handleDeleteEmployee,
       handleUpdateMonthlyBonus,
       handleUpdateSalary,
+      handleUpdateTimekeepingCode,
+      handleSyncAttendanceStaff,
       monthlyBonusMutation.isPending,
       navigate,
       periodDate,
       salaryMutation.isPending,
+      savedStaffQuery.data?.rows,
+      savedStaffQuery.isFetching,
+      syncStaffMutation.isPending,
+      timekeepingCodeMutation.isPending,
     ],
   );
 
@@ -365,11 +475,11 @@ function EditableSalaryCell({
   };
 
   return (
-    <div className="group/salary relative inline-flex min-w-44 items-center">
+    <div className="group/salary relative inline-flex min-w-44 cursor-text items-center">
       <CurrencyInput
         allowDecimals={false}
         allowNegativeValue={false}
-        className="h-10 w-full rounded-lg border border-sky-200 bg-sky-50 px-3 pr-10 text-right font-bold tabular-nums text-sky-800 outline-none shadow-[inset_0_0_0_1px_rgba(186,230,253,0.35)] transition hover:border-sky-300 hover:bg-sky-100/70 focus:border-sky-500 focus:bg-white focus:ring-2 focus:ring-sky-200 disabled:cursor-wait disabled:opacity-70"
+        className="h-10 w-full cursor-text rounded-lg border border-sky-200 bg-sky-50 px-3 pr-10 text-right font-bold tabular-nums text-sky-800 outline-none shadow-[inset_0_0_0_1px_rgba(186,230,253,0.35)] transition hover:border-sky-300 hover:bg-sky-100/70 focus:border-sky-500 focus:bg-white focus:ring-2 focus:ring-sky-200 disabled:cursor-wait disabled:opacity-70"
         decimalSeparator=","
         decimalsLimit={0}
         disabled={isSaving}
@@ -401,6 +511,235 @@ function EditableSalaryCell({
       />
     </div>
   );
+}
+
+function EditableTimekeepingCodeCell({
+  employee,
+  isEditable,
+  isSaving,
+  isStaffLoading,
+  isStaffSyncing,
+  serverStaffRows,
+  onSync,
+  onSave,
+}: {
+  employee: Employee;
+  isEditable: boolean;
+  isSaving: boolean;
+  isStaffLoading: boolean;
+  isStaffSyncing: boolean;
+  serverStaffRows: AttendanceServerStaffRow[];
+  onSync: () => void;
+  onSave: (timekeepingCode: string) => void;
+}) {
+  const currentValue = employee.timekeepingCode ?? "";
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const matchedStaff = serverStaffRows.find((staff) => staff.staffNumber === currentValue);
+  const visibleStaffRows = useMemo(() => {
+    const keyword = searchText.trim().toLowerCase();
+    if (!keyword) {
+      return serverStaffRows.slice(0, 50);
+    }
+
+    return serverStaffRows
+      .filter((staff) =>
+        [staff.staffNumber, staff.enrollid, staff.name, staff.departmentName, staff.email, staff.mobile]
+          .filter(Boolean)
+          .some((value) => value.toLowerCase().includes(keyword)),
+      )
+      .slice(0, 50);
+  }, [searchText, serverStaffRows]);
+
+  const handleSelectStaff = (staff: AttendanceServerStaffRow) => {
+    const nextValue = staff.staffNumber.trim();
+    setIsOpen(false);
+    if (nextValue && nextValue !== currentValue) {
+      onSave(nextValue);
+    }
+  };
+
+  if (!isEditable) {
+    return (
+      <span className="block min-w-44 whitespace-nowrap font-semibold text-muted-foreground">
+        {matchedStaff?.name || (currentValue ? "Đã gán máy chấm công" : "-")}
+      </span>
+    );
+  }
+
+  const triggerLabel = matchedStaff?.name || (currentValue ? "Đã gán nhưng chưa khớp dữ liệu" : "Chọn nhân viên");
+  const triggerDescription = matchedStaff
+    ? [matchedStaff.departmentName, matchedStaff.email].filter(Boolean).join(" · ") || "Dữ liệu máy chấm công"
+    : currentValue
+      ? "Cần đồng bộ lại danh sách máy chấm công"
+      : "Từ danh sách đã đồng bộ";
+
+  return (
+    <div className="min-w-60">
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <PopoverTrigger asChild>
+          <button
+            className="flex min-h-12 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-left outline-none transition hover:border-amber-400 hover:bg-amber-100 focus:border-amber-500 focus:bg-white focus:ring-2 focus:ring-amber-200 disabled:cursor-wait disabled:opacity-70"
+            disabled={isSaving}
+            title="Click để chọn nhân viên từ danh sách máy chấm công đã đồng bộ"
+            type="button"
+          >
+            <span className="min-w-0">
+              <span className={matchedStaff || currentValue ? "block truncate text-sm font-bold text-amber-900" : "block truncate text-sm font-bold text-amber-700/70"}>
+                {triggerLabel}
+              </span>
+              <span className="mt-0.5 block truncate text-xs font-semibold text-muted-foreground">
+                {triggerDescription}
+              </span>
+            </span>
+            {isStaffLoading ? (
+              <RefreshCw className="shrink-0 animate-spin text-amber-600" size={14} />
+            ) : (
+              <Search className="shrink-0 text-amber-600" size={14} />
+            )}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          avoidCollisions
+          className="w-[min(28rem,calc(100vw-2rem))] gap-0 overflow-hidden border-2 border-orange-300 bg-orange-50 p-0 shadow-2xl shadow-orange-950/20"
+          collisionPadding={16}
+          side="bottom"
+          sideOffset={8}
+        >
+          <div className="border-b border-orange-300 bg-orange-600 px-3 py-3 text-white">
+            <PopoverHeader>
+              <PopoverTitle className="text-white">Chọn nhân viên máy chấm công</PopoverTitle>
+              <PopoverDescription className="text-orange-50">
+                {employee.fullName} · chọn từ bảng đã đồng bộ
+              </PopoverDescription>
+            </PopoverHeader>
+          </div>
+
+          <div className="space-y-3 bg-orange-50 p-3">
+            <div className="rounded-lg border border-orange-200 bg-white/90 p-2 shadow-sm">
+              <div className="flex gap-2">
+                <div className="relative min-w-0 flex-1">
+                  <Search
+                    className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-orange-500"
+                    size={15}
+                  />
+                  <input
+                    autoFocus
+                    className="h-10 w-full rounded-md border border-orange-200 bg-orange-50/70 pl-8 pr-2 text-sm font-semibold text-foreground outline-none transition placeholder:text-orange-700/50 focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-200"
+                    placeholder="Tìm tên, email, bộ phận..."
+                    value={searchText}
+                    onChange={(event) => setSearchText(event.target.value)}
+                  />
+                </div>
+                <button
+                  className="inline-flex h-10 shrink-0 cursor-pointer items-center gap-2 rounded-md bg-orange-600 px-3 text-sm font-bold text-white shadow-sm transition hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-300 disabled:cursor-wait disabled:bg-orange-300"
+                  disabled={isStaffSyncing}
+                  type="button"
+                  onClick={onSync}
+                >
+                  <RefreshCw className={isStaffSyncing ? "animate-spin" : ""} size={15} />
+                  Đồng bộ
+                </button>
+              </div>
+              {!isStaffLoading && serverStaffRows.length === 0 ? (
+                <p className="mt-2 text-xs font-medium text-amber-700">
+                  Chưa có dữ liệu đã đồng bộ. Bấm Đồng bộ để tải danh sách từ máy chấm công.
+                </p>
+              ) : null}
+            </div>
+
+            <div className="max-h-72 overflow-auto rounded-lg border border-orange-200 bg-white shadow-sm">
+              {isStaffLoading ? (
+                <div className="flex items-center gap-2 px-3 py-4 text-sm font-medium text-orange-700">
+                  <RefreshCw className="animate-spin" size={15} />
+                  Đang tải dữ liệu đã đồng bộ...
+                </div>
+              ) : visibleStaffRows.length > 0 ? (
+                visibleStaffRows.map((staff) => {
+                  const selected = staff.staffNumber === currentValue;
+                  return (
+                    <button
+                      className={`flex w-full items-center justify-between gap-3 border-b border-border px-3 py-2 text-left transition last:border-b-0 ${
+                        selected ? "bg-emerald-50" : "bg-white hover:bg-orange-50"
+                      }`}
+                      key={`${staff.id}-${staff.staffNumber}`}
+                      type="button"
+                      onClick={() => handleSelectStaff(staff)}
+                    >
+                      <span className="flex min-w-0 items-center gap-3">
+                        <StaffAvatar staff={staff} />
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-bold text-foreground">
+                            {staff.name || "Không tên"}
+                          </span>
+                          <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                            {staff.departmentName || "Chưa có bộ phận"} · {staff.email || "không email"}
+                          </span>
+                        </span>
+                      </span>
+                      <span
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+                          selected ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {selected ? <Check size={14} /> : null}
+                      </span>
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="px-3 py-4 text-sm font-medium text-orange-700">
+                  Không tìm thấy nhân viên máy chấm công phù hợp.
+                </div>
+              )}
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
+
+function StaffAvatar({ staff }: { staff: AttendanceServerStaffRow }) {
+  const [failed, setFailed] = useState(false);
+  const photoUrl = failed ? "" : getYunattPhotoUrl(staff.photo);
+
+  if (photoUrl) {
+    return (
+      <img
+        alt={staff.name || staff.staffNumber || "Yunatt staff"}
+        className="h-10 w-10 shrink-0 rounded-lg border border-amber-100 bg-amber-50 object-cover"
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        src={photoUrl}
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+
+  return (
+    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-amber-100 bg-amber-50 text-sm font-bold text-amber-700">
+      {getStaffInitial(staff)}
+    </span>
+  );
+}
+
+function getYunattPhotoUrl(photo: string) {
+  const value = photo.trim();
+  if (!value) {
+    return "";
+  }
+
+  if (/^https?:\/\//i.test(value)) {
+    return value;
+  }
+
+  return `https://global.yunatt.com${value.startsWith("/") ? value : `/${value}`}`;
+}
+
+function getStaffInitial(staff: AttendanceServerStaffRow) {
+  return (staff.name || staff.staffNumber || "?").trim().charAt(0).toUpperCase() || "?";
 }
 
 function EditableMonthlyBonusCell({
@@ -444,7 +783,7 @@ function EditableMonthlyBonusCell({
     <CurrencyInput
       allowDecimals={false}
       allowNegativeValue={false}
-      className="h-9 min-w-40 rounded-md border border-emerald-200 bg-emerald-50 px-2 text-right font-semibold tabular-nums text-emerald-700 outline-none transition hover:border-emerald-300 hover:bg-emerald-100/70 focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-200 disabled:cursor-wait disabled:opacity-70"
+      className="h-9 min-w-40 cursor-text rounded-md border border-emerald-200 bg-emerald-50 px-2 text-right font-semibold tabular-nums text-emerald-700 outline-none transition hover:border-emerald-300 hover:bg-emerald-100/70 focus:border-emerald-500 focus:bg-white focus:ring-2 focus:ring-emerald-200 disabled:cursor-wait disabled:opacity-70"
       decimalSeparator=","
       decimalsLimit={0}
       disabled={isSaving}

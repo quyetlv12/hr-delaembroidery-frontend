@@ -75,13 +75,11 @@ export function LoginPage() {
 
       {/* ── Content ── */}
       <div className="relative z-10 flex w-full max-w-[1080px] items-center gap-16 px-6 py-10 lg:px-10">
-
         {/* ── Left branding ── */}
         <div className="hidden flex-1 lg:block">
           <div className="animate-in fade-in slide-in-from-left-8 duration-700 fill-mode-both">
             {/* logo pill */}
             <div className="mb-8 inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2 backdrop-blur-sm">
-              <img alt="Dela Embroidery" className="h-6 w-auto" src={logo} />
               <span className="text-sm font-semibold tracking-wide text-white/70">
                 Dela Embroidery
               </span>
@@ -96,23 +94,25 @@ export function LoginPage() {
             </h1>
 
             <p className="mt-6 max-w-sm text-base leading-relaxed text-slate-400">
-              Nền tảng HRM toàn diện — chấm công, tính lương, quản lý hồ sơ
-              nhân viên trong một hệ thống duy nhất.
+              Nền tảng HRM toàn diện — chấm công, tính lương, quản lý hồ sơ nhân
+              viên trong một hệ thống duy nhất.
             </p>
 
             {/* feature pills */}
             <div className="mt-10 flex flex-wrap gap-3">
-              {["Chấm công tự động", "Tính lương công thức", "Phân quyền RBAC"].map(
-                (feat) => (
-                  <span
-                    key={feat}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-300"
-                  >
-                    <Sparkles className="text-[#F05423]" size={11} />
-                    {feat}
-                  </span>
-                ),
-              )}
+              {[
+                "Chấm công tự động",
+                "Tính lương công thức",
+                "Phân quyền RBAC",
+              ].map((feat) => (
+                <span
+                  key={feat}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-300"
+                >
+                  <Sparkles className="text-[#F05423]" size={11} />
+                  {feat}
+                </span>
+              ))}
             </div>
 
             {/* divider */}
@@ -128,11 +128,14 @@ export function LoginPage() {
           {/* card shell */}
           <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-[1px] shadow-[0_32px_80px_-12px_rgba(0,0,0,0.7)] backdrop-blur-2xl">
             <div className="rounded-[15px] bg-gradient-to-b from-white/[0.06] to-white/[0.02] px-8 py-9">
-
               {/* mobile logo */}
               <div className="mb-8 flex items-center gap-3 lg:hidden">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white p-1.5 shadow-lg">
-                  <img alt="Dela Embroidery" className="h-full w-auto" src={logo} />
+                  <img
+                    alt="Dela Embroidery"
+                    className="h-full w-auto"
+                    src={logo}
+                  />
                 </div>
                 <span className="text-lg font-bold text-white">
                   Dela <span className="text-[#F05423]">Embroidery</span>
@@ -141,7 +144,9 @@ export function LoginPage() {
 
               {/* heading */}
               <div className="mb-8">
-                <h2 className="text-2xl font-bold text-white">Chào mừng trở lại</h2>
+                <h2 className="text-2xl font-bold text-white">
+                  Chào mừng trở lại
+                </h2>
                 <p className="mt-1.5 text-sm text-slate-400">
                   Đăng nhập để tiếp tục vào hệ thống
                 </p>
@@ -150,7 +155,9 @@ export function LoginPage() {
               {/* form */}
               <form
                 className="space-y-5"
-                onSubmit={form.handleSubmit((values) => mutation.mutate(values))}
+                onSubmit={form.handleSubmit((values) =>
+                  mutation.mutate(values),
+                )}
               >
                 <AppInput
                   autoCapitalize="characters"

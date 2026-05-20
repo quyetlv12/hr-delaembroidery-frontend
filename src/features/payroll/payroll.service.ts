@@ -26,6 +26,14 @@ export async function calculatePayroll(month: number, year: number, formulaSetti
   return unwrapApiResponse(response.data);
 }
 
+export async function restorePayrollBonuses(month: number, year: number) {
+  const response = await api.post<ApiResponse<PayrollResponse>>("/payroll/restore-bonuses", {
+    month,
+    year,
+  });
+  return unwrapApiResponse(response.data);
+}
+
 export async function getPayrollFormulaSetting() {
   const response = await api.get<ApiResponse<PayrollFormulaSetting>>("/payroll/settings/formula");
   return unwrapApiResponse(response.data);

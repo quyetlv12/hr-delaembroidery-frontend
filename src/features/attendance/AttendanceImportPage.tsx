@@ -100,10 +100,11 @@ export function AttendanceImportPage() {
     onSuccess(result) {
       setPreview(null);
       showSuccess("Đã reset dữ liệu test", {
-        description: `${result.attendanceRows} dòng chấm công, ${result.payrollRecords} bản ghi lương.`,
+        description: `${result.attendanceRows} dòng chấm công, ${result.payrollRecords} bản ghi lương. Giữ ${result.preservedBonuses} dòng thưởng.`,
       });
       void queryClient.invalidateQueries({ queryKey: ["attendance"] });
       void queryClient.invalidateQueries({ queryKey: ["payroll"] });
+      void queryClient.invalidateQueries({ queryKey: ["employees"] });
     },
     onError(error) {
       showApiError(error);

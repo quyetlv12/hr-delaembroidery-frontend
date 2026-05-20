@@ -90,7 +90,9 @@ export type UpdateAttendanceMonthSettingInput = {
 };
 
 export type UpdateAttendanceSummaryRowInput = {
-  id: string;
+  id?: string;
+  employeeId?: string;
+  workDate?: string;
   morningCheckIn: string | null;
   morningCheckOut: string | null;
   afternoonCheckIn: string | null;
@@ -124,6 +126,7 @@ export type ResetAttendancePayrollResult = {
   payrollRecords: number;
   salaryDetails: number;
   salaryEmailLogs: number;
+  preservedBonuses: number;
 };
 
 export type AttendancePayrollPreviewRecord = {
@@ -201,4 +204,200 @@ export type AttendancePreview = {
     attendanceRows: number;
     unmatchedRows: number;
   };
+};
+
+export type AttendanceServerSyncTestInput = {
+  endpoint: string;
+  cookie?: string;
+  monthDataId: string;
+  order: "asc" | "desc";
+  offset: number;
+  limit: number;
+  search: string;
+};
+
+export type AttendanceServerBodyImportInput = {
+  month: number;
+  year: number;
+  fileName?: string;
+  body: unknown;
+};
+
+export type AttendanceServerManualSyncInput = {
+  monthDataId: string;
+  sourcePeriod?: string;
+  month: number;
+  year: number;
+};
+
+export type AttendanceServerManualSyncResponse = {
+  requested: {
+    monthDataId: string;
+    sourcePeriod: string | null;
+    month: number;
+    year: number;
+  };
+  total: number;
+  fetchedRows: number;
+  importedEmployees: number;
+  attendanceRows: number;
+  attendanceLogs: number;
+  unmatchedRows: Array<{ code: string; name: string }>;
+  payroll: PayrollResponse;
+};
+
+export type AttendanceServerSyncTestRow = {
+  staffNumber: string;
+  staffName: string;
+  days: Record<string, string[]>;
+  presentDays: number;
+  punchCount: number;
+};
+
+export type AttendanceServerSyncTestResponse = {
+  requested: {
+    endpoint: string;
+    monthDataId: string;
+    order: "asc" | "desc";
+    offset: number;
+    limit: number;
+    search: string;
+  };
+  total: number;
+  fetchedRows: number;
+  dates: string[];
+  rows: AttendanceServerSyncTestRow[];
+  rawRows: Array<Record<string, unknown>>;
+};
+
+export type AttendanceServerStaffListInput = {
+  endpoint: string;
+  cookie?: string;
+  sort: string;
+  order: "asc" | "desc";
+  offset: number;
+  limit: number;
+  search: string;
+};
+
+export type AttendanceServerStaffRow = {
+  id: string;
+  enrollid: string;
+  staffNumber: string;
+  name: string;
+  departmentName: string;
+  email: string;
+  mobile: string;
+  staffStatus: number | null;
+  punch: boolean;
+  photo: string;
+};
+
+export type AttendanceServerSavedStaffListInput = {
+  offset: number;
+  limit: number;
+  search: string;
+};
+
+export type AttendanceServerSavedStaffRow = AttendanceServerStaffRow & {
+  yunattId: string;
+  idNumber: string;
+  icCard: string;
+  punchPwd: string;
+  departmentId: string;
+  staffTypeId: string;
+  staffType: string;
+  staffDate: string;
+  sex: number | null;
+  stationId: string;
+  station: string;
+  address: string;
+  degreeId: string;
+  degree: string;
+  phone: string;
+  remark: string;
+  appLogin: boolean;
+  senior: boolean;
+  admin: boolean;
+  superAdmin: boolean;
+  leave: boolean;
+  leaveType: string;
+  leaveDate: string;
+  leaveReason: string;
+  needApp: string;
+  customerId: string;
+  gmtCreate: string;
+  gmtModified: string;
+  fingerNum: number | null;
+  faceNum: number | null;
+  picNum: number | null;
+  attenceMachineIds: string;
+  deviceNames: string;
+  groupNames: string;
+  rawPayload: Record<string, unknown> | null;
+  lastSyncedAt: string | null;
+  syncedByLoginCode: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AttendanceServerSavedStaffListResponse = {
+  offset: number;
+  limit: number;
+  search: string;
+  total: number;
+  rows: AttendanceServerSavedStaffRow[];
+};
+
+export type AttendanceServerStaffListResponse = {
+  requested: {
+    endpoint: string;
+    sort: string;
+    order: "asc" | "desc";
+    offset: number;
+    limit: number;
+    search: string;
+  };
+  total: number;
+  fetchedRows: number;
+  rows: AttendanceServerStaffRow[];
+  rawRows: Array<Record<string, unknown>>;
+};
+
+export type AttendanceServerStaffSyncResponse = {
+  requested: AttendanceServerStaffListResponse["requested"];
+  total: number;
+  fetchedRows: number;
+  savedRows: number;
+  rows: AttendanceServerSavedStaffRow[];
+};
+
+export type AttendanceServerSettings = {
+  attendanceEndpoint: string;
+  staffEndpoint: string;
+  hasCookie: boolean;
+  cookiePreview: string;
+  updatedAt: string | null;
+  updatedByLoginCode: string | null;
+  autoSyncEnabled: boolean;
+  autoSyncMonthDataId: string;
+  autoSyncMonthMappings: Array<{ period: string; monthDataId: string }>;
+  autoSyncStartOffsetMinutes: number;
+  autoSyncWindowMinutes: number;
+  autoSyncIntervalMinutes: number;
+  autoSyncLastRunAt: string | null;
+  autoSyncLastStatus: string | null;
+  autoSyncLastMessage: string | null;
+};
+
+export type UpdateAttendanceServerSettingsInput = {
+  attendanceEndpoint: string;
+  staffEndpoint: string;
+  cookie?: string;
+  autoSyncEnabled?: boolean;
+  autoSyncMonthDataId?: string;
+  autoSyncMonthMappings?: Array<{ period: string; monthDataId: string }>;
+  autoSyncStartOffsetMinutes?: number;
+  autoSyncWindowMinutes?: number;
+  autoSyncIntervalMinutes?: number;
 };

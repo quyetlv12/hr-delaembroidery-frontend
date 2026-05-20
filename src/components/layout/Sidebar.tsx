@@ -23,7 +23,12 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       return false;
     }
 
-    if (isEmployeeSelfService && ["/employees", "/employees/salary-history", "/organization"].includes(item.path)) {
+    if (
+      isEmployeeSelfService &&
+      ["/employees", "/employees/salary-history", "/organization"].includes(
+        item.path,
+      )
+    ) {
       return false;
     }
 
@@ -35,7 +40,11 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       {/* Brand */}
       <div className="flex flex-col gap-4 px-5 py-6">
         <div className="flex h-12 w-full items-center justify-start overflow-hidden rounded-lg bg-white p-2 shadow-sm ring-1 ring-border/50">
-          <img alt="Dela Embroidery" className="h-full w-auto object-contain" src={logo} />
+          <img
+            alt="Dela Embroidery"
+            className="h-full w-auto object-contain"
+            src={logo}
+          />
         </div>
         <div>
           <div className="text-[15px] font-bold tracking-tight text-card-foreground">
@@ -62,14 +71,21 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         {visibleItems.map((item) => {
           const Icon = item.icon;
           const isExactMatch = location.pathname === item.path;
-          const isParentMatch = item.path !== "/" && location.pathname.startsWith(item.path + "/");
-          
-          // An item is active if it's an exact match, 
+          const isParentMatch =
+            item.path !== "/" && location.pathname.startsWith(item.path + "/");
+
+          // An item is active if it's an exact match,
           // or if it's a parent match and no other visible item is a better match
-          const isActive = isExactMatch || (isParentMatch && !visibleItems.some(
-            other => other.path !== item.path && location.pathname.startsWith(other.path) && other.path.length > item.path.length
-          ));
-          
+          const isActive =
+            isExactMatch ||
+            (isParentMatch &&
+              !visibleItems.some(
+                (other) =>
+                  other.path !== item.path &&
+                  location.pathname.startsWith(other.path) &&
+                  other.path.length > item.path.length,
+              ));
+
           return (
             <NavLink
               className={cn(
@@ -89,7 +105,9 @@ export function Sidebar({ onNavigate }: SidebarProps) {
               <Icon
                 className={cn(
                   "shrink-0 transition-colors",
-                  isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground",
+                  isActive
+                    ? "text-primary"
+                    : "text-muted-foreground group-hover:text-foreground",
                 )}
                 size={18}
                 strokeWidth={isActive ? 2.2 : 1.8}
@@ -99,23 +117,6 @@ export function Sidebar({ onNavigate }: SidebarProps) {
           );
         })}
       </nav>
-
-      {/* Bottom: User info */}
-      <div className="mx-3 mb-3 rounded-lg border border-border bg-muted/50 p-3">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-[12px] font-bold text-primary">
-            {user?.fullName?.charAt(0)?.toUpperCase() ?? "U"}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-xs font-semibold text-card-foreground">
-              {user?.fullName}
-            </div>
-            <div className="truncate text-[10px] text-muted-foreground">
-              {user?.loginCode}
-            </div>
-          </div>
-        </div>
-      </div>
     </aside>
   );
 }

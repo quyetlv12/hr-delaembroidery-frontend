@@ -5,11 +5,23 @@ import type { PayrollEmployeeViewColumn } from "@/features/employee-view-setting
 import { cn } from "@/lib/utils";
 
 import { payrollDisplayColumns } from "../payroll-column-metadata";
-import type { PayrollFormulaSetting, PayrollRecordEditableField, SalaryRecord } from "../payroll.types";
-import { EditableMoneyCell, EditableNumberCell, type PayrollCellEditConfig } from "./PayrollEditableCells";
+import type {
+  PayrollFormulaSetting,
+  PayrollRecordEditableField,
+  SalaryRecord,
+} from "../payroll.types";
+import {
+  EditableMoneyCell,
+  EditableNumberCell,
+  type PayrollCellEditConfig,
+} from "./PayrollEditableCells";
 import { PayrollFormulaRow } from "./PayrollFormulaRow";
 
-const currencyFormatter = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 });
+const currencyFormatter = new Intl.NumberFormat("vi-VN", {
+  style: "currency",
+  currency: "VND",
+  maximumFractionDigits: 0,
+});
 const payrollStatusLabel = { draft: "Nháp", locked: "Đã khóa" } as const;
 const payrollRowHoverCellClass =
   "transition-colors group-hover/payroll-row:border-orange-300 group-hover/payroll-row:bg-amber-100/80";
@@ -18,7 +30,11 @@ type PayrollExcelTableProps = {
   formulaSetting?: PayrollFormulaSetting;
   isEditable: boolean;
   isSaving: boolean;
-  onEditRecord: (recordId: string, field: PayrollRecordEditableField, value: number) => void;
+  onEditRecord: (
+    recordId: string,
+    field: PayrollRecordEditableField,
+    value: number,
+  ) => void;
   records: SalaryRecord[];
   visibleColumns: PayrollEmployeeViewColumn[];
 };
@@ -36,9 +52,20 @@ type PayrollColumnDefinition = {
 };
 
 const payrollColumnDefinitions: PayrollColumnDefinition[] = [
-  { key: "employeeCode", label: "Mã NV", width: "min-w-20", kind: "text", footer: "label" },
+  {
+    key: "employeeCode",
+    label: "Mã NV",
+    width: "min-w-20",
+    kind: "text",
+    footer: "label",
+  },
   { key: "employeeName", label: "Họ và tên", width: "min-w-48", kind: "text" },
-  { key: "departmentName", label: "Phòng ban", width: "min-w-36", kind: "text" },
+  {
+    key: "departmentName",
+    label: "Phòng ban",
+    width: "min-w-36",
+    kind: "text",
+  },
   { key: "positionName", label: "Chức vụ", width: "min-w-32", kind: "text" },
   {
     key: "insuranceSalary",
@@ -249,7 +276,12 @@ const payrollColumnDefinitions: PayrollColumnDefinition[] = [
     tone: "net",
     footer: "sum",
   },
-  { key: "dependentNote", label: "Ghi chú NPT", width: "min-w-32", kind: "text" },
+  {
+    key: "dependentNote",
+    label: "Ghi chú NPT",
+    width: "min-w-32",
+    kind: "text",
+  },
   { key: "email", label: "Email", width: "min-w-56", kind: "text" },
   { key: "status", label: "Trạng thái", width: "min-w-24", kind: "status" },
 ];
@@ -257,7 +289,14 @@ const payrollColumnDefinitions: PayrollColumnDefinition[] = [
 const groupDefinitions = [
   {
     label: "Thông tin nhân viên",
-    columns: ["employeeCode", "employeeName", "departmentName", "positionName", "insuranceSalary", "configuredSalary"],
+    columns: [
+      "employeeCode",
+      "employeeName",
+      "departmentName",
+      "positionName",
+      "insuranceSalary",
+      "configuredSalary",
+    ],
   },
   {
     label: "Lương ngày được hưởng",
@@ -270,10 +309,22 @@ const groupDefinitions = [
       "dailyTotal",
     ],
   },
-  { label: "Ngày công", columns: ["workDay", "overtimeWorkDay", "totalWorkDay"] },
-  { label: "Lương được hưởng", columns: ["earnedSalary", "overtimeTotal", "grossSalary"] },
-  { label: "Bảng tính BHXH", columns: ["employerInsuranceTotal", "insuranceTotal"] },
-  { label: "Các khoản giảm trừ", columns: ["taxTotal", "advanceTotal", "deductionTotal"] },
+  {
+    label: "Ngày công",
+    columns: ["workDay", "overtimeWorkDay", "totalWorkDay"],
+  },
+  {
+    label: "Lương được hưởng",
+    columns: ["earnedSalary", "overtimeTotal", "grossSalary"],
+  },
+  {
+    label: "Bảng tính BHXH",
+    columns: ["employerInsuranceTotal", "insuranceTotal"],
+  },
+  {
+    label: "Các khoản giảm trừ",
+    columns: ["taxTotal", "advanceTotal", "deductionTotal"],
+  },
   { label: "Thưởng", columns: ["bonus"] },
   { label: "Thực nhận", columns: ["netSalary"] },
   { label: "Ghi chú NPT", columns: ["dependentNote"] },
@@ -289,12 +340,19 @@ export function PayrollExcelTable({
   records,
   visibleColumns,
 }: PayrollExcelTableProps) {
-  const visibleColumnSet = useMemo(() => new Set(visibleColumns), [visibleColumns]);
+  const visibleColumnSet = useMemo(
+    () => new Set(visibleColumns),
+    [visibleColumns],
+  );
   const columns = useMemo(
     () =>
       payrollDisplayColumns
         .filter((column) => visibleColumnSet.has(column))
-        .map((column) => payrollColumnDefinitions.find((definition) => definition.key === column))
+        .map((column) =>
+          payrollColumnDefinitions.find(
+            (definition) => definition.key === column,
+          ),
+        )
         .filter((column): column is PayrollColumnDefinition => Boolean(column)),
     [visibleColumnSet],
   );
@@ -304,15 +362,23 @@ export function PayrollExcelTable({
   return (
     <section className="w-full max-w-full overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <div className="border-b border-border px-4 py-3 md:px-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold text-card-foreground">Bảng tính lương theo mẫu Excel</h2>
+            <h2 className="text-base font-semibold text-card-foreground">
+              Bảng tính lương theo mẫu Excel
+            </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Các số tiền được tính theo danh mục và công thức do admin cài đặt trong màn hình công thức lương.
+              Các số tiền được tính theo danh mục và công thức do admin cài đặt
+              trong màn hình công thức lương.
             </p>
           </div>
-          <Badge tone={isEditable ? "warning" : "neutral"}>
-            {isEditable ? "Có thể sửa: Enter hoặc rời ô để lưu" : "Kỳ đã khóa: chỉ xem"}
+          <Badge tone={isEditable ? "warning" : "neutral"} className="p-2">
+            <span className="text-black">
+              {" "}
+              {isEditable
+                ? "Có thể sửa: Nhập vào ô để sửa"
+                : "Kỳ đã khóa: chỉ xem"}
+            </span>
           </Badge>
         </div>
       </div>
@@ -321,16 +387,27 @@ export function PayrollExcelTable({
         <table className="w-max min-w-full table-auto border-collapse text-left text-[12px]">
           <thead className="sticky top-0 z-20 text-card-foreground">
             <tr className="bg-sky-50 text-center text-[12px] font-semibold uppercase text-sky-950">
-              {groupDefinitions.map((group) => renderGroupHeader(group.label, group.columns, visibleColumnSet))}
+              {groupDefinitions.map((group) =>
+                renderGroupHeader(group.label, group.columns, visibleColumnSet),
+              )}
             </tr>
             <tr className="bg-sky-50 text-[12px] font-semibold text-sky-950">
               {columns.map((column) => (
-                <HeaderCell className={cn(column.width, column.align === "right" ? "text-right" : "")} key={column.key}>
+                <HeaderCell
+                  className={cn(
+                    column.width,
+                    column.align === "right" ? "text-right" : "",
+                  )}
+                  key={column.key}
+                >
                   {column.label}
                 </HeaderCell>
               ))}
             </tr>
-            <PayrollFormulaRow formulaSetting={formulaSetting} visibleColumns={visibleColumns} />
+            <PayrollFormulaRow
+              formulaSetting={formulaSetting}
+              visibleColumns={visibleColumns}
+            />
           </thead>
           <tbody>
             {groupedRecords.map((group, groupIndex) => (
@@ -374,26 +451,39 @@ function PayrollGroupRows({
   groupName: string;
   isEditable: boolean;
   isSaving: boolean;
-  onEditRecord: (recordId: string, field: PayrollRecordEditableField, value: number) => void;
+  onEditRecord: (
+    recordId: string,
+    field: PayrollRecordEditableField,
+    value: number,
+  ) => void;
   records: SalaryRecord[];
   visibleColumnCount: number;
 }) {
   return (
     <>
       <tr className="bg-slate-100 text-sm font-semibold text-card-foreground">
-        <td className="whitespace-nowrap border border-border px-3 py-2" colSpan={visibleColumnCount}>
+        <td
+          className="whitespace-nowrap border border-border px-3 py-2"
+          colSpan={visibleColumnCount}
+        >
           {toRoman(groupIndex + 1)}. Bộ phận {groupName}
         </td>
       </tr>
       {records.map((record) => (
-        <tr className="group/payroll-row bg-card transition-colors hover:bg-amber-100/80" key={record.id}>
+        <tr
+          className="group/payroll-row bg-card transition-colors hover:bg-amber-100/80"
+          key={record.id}
+        >
           {columns.map((column) =>
             renderRecordCell(
               column,
               record,
               {
                 field: column.editableField,
-                isEditable: isEditable && record.status !== "locked" && Boolean(column.editableField),
+                isEditable:
+                  isEditable &&
+                  record.status !== "locked" &&
+                  Boolean(column.editableField),
                 isSaving,
                 onEditRecord,
                 recordId: record.id,
@@ -410,13 +500,19 @@ function PayrollGroupRows({
 function renderRecordCell(
   column: PayrollColumnDefinition,
   record: SalaryRecord,
-  edit: Omit<PayrollCellEditConfig, "field"> & { field?: PayrollRecordEditableField },
+  edit: Omit<PayrollCellEditConfig, "field"> & {
+    field?: PayrollRecordEditableField;
+  },
   formulaSetting?: PayrollFormulaSetting,
 ) {
   const value = record[column.key];
 
   if (column.kind === "status") {
-    return <TextTableCell key={column.key}>{payrollStatusLabel[record.status]}</TextTableCell>;
+    return (
+      <TextTableCell key={column.key}>
+        {payrollStatusLabel[record.status]}
+      </TextTableCell>
+    );
   }
 
   if (column.kind === "number") {
@@ -450,23 +546,38 @@ function renderRecordCell(
   }
 
   return (
-    <TextTableCell className={column.key === "employeeName" ? "font-medium" : undefined} key={column.key}>
+    <TextTableCell
+      className={column.key === "employeeName" ? "font-medium" : undefined}
+      key={column.key}
+    >
       {String(value || "-")}
     </TextTableCell>
   );
 }
 
-function getNoAllowanceReset(column: PayrollEmployeeViewColumn, formulaSetting?: PayrollFormulaSetting) {
+function getNoAllowanceReset(
+  column: PayrollEmployeeViewColumn,
+  formulaSetting?: PayrollFormulaSetting,
+) {
   if (column === "mealAllowance") {
-    return { defaultValue: formulaSetting?.defaultMealAllowance ?? 0, label: "Không phụ cấp" };
+    return {
+      defaultValue: formulaSetting?.defaultMealAllowance ?? 0,
+      label: "Không phụ cấp",
+    };
   }
   if (column === "phoneAllowance") {
-    return { defaultValue: formulaSetting?.defaultPhoneAllowance ?? 0, label: "Không phụ cấp" };
+    return {
+      defaultValue: formulaSetting?.defaultPhoneAllowance ?? 0,
+      label: "Không phụ cấp",
+    };
   }
   return undefined;
 }
 
-function renderFooterCell(column: PayrollColumnDefinition, totals: Record<PayrollEmployeeViewColumn, number>) {
+function renderFooterCell(
+  column: PayrollColumnDefinition,
+  totals: Record<PayrollEmployeeViewColumn, number>,
+) {
   if (column.footer === "label") {
     return <FooterTextCell key={column.key}>TỔNG CỘNG</FooterTextCell>;
   }
@@ -478,7 +589,9 @@ function renderFooterCell(column: PayrollColumnDefinition, totals: Record<Payrol
   }
   return (
     <MoneyTableCell
-      className={column.key === "netSalary" ? "bg-yellow-200 text-slate-950" : undefined}
+      className={
+        column.key === "netSalary" ? "bg-yellow-200 text-slate-950" : undefined
+      }
       key={column.key}
       sign={column.sign}
       tone={column.tone}
@@ -487,9 +600,18 @@ function renderFooterCell(column: PayrollColumnDefinition, totals: Record<Payrol
   );
 }
 
-function GroupHeader({ children, colSpan = 1 }: { children: ReactNode; colSpan?: number }) {
+function GroupHeader({
+  children,
+  colSpan = 1,
+}: {
+  children: ReactNode;
+  colSpan?: number;
+}) {
   return (
-    <th className="whitespace-nowrap border border-border px-3 py-3 text-center align-middle" colSpan={colSpan}>
+    <th
+      className="whitespace-nowrap border border-border px-3 py-3 text-center align-middle"
+      colSpan={colSpan}
+    >
       {children}
     </th>
   );
@@ -500,7 +622,9 @@ function renderGroupHeader(
   columns: PayrollEmployeeViewColumn[],
   visibleColumnSet: Set<PayrollEmployeeViewColumn>,
 ) {
-  const colSpan = columns.filter((column) => visibleColumnSet.has(column)).length;
+  const colSpan = columns.filter((column) =>
+    visibleColumnSet.has(column),
+  ).length;
   return colSpan > 0 ? (
     <GroupHeader colSpan={colSpan} key={label}>
       {label}
@@ -508,11 +632,32 @@ function renderGroupHeader(
   ) : null;
 }
 
-function HeaderCell({ children, className }: { children: ReactNode; className?: string }) {
-  return <th className={cn("whitespace-nowrap border border-border px-3 py-3 align-middle", className)}>{children}</th>;
+function HeaderCell({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <th
+      className={cn(
+        "whitespace-nowrap border border-border px-3 py-3 align-middle",
+        className,
+      )}
+    >
+      {children}
+    </th>
+  );
 }
 
-function TextTableCell({ children, className }: { children: ReactNode; className?: string }) {
+function TextTableCell({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return (
     <td
       className={cn(
@@ -528,10 +673,20 @@ function TextTableCell({ children, className }: { children: ReactNode; className
 }
 
 function FooterTextCell({ children }: { children?: ReactNode }) {
-  return <td className="whitespace-nowrap border border-border px-3 py-2">{children}</td>;
+  return (
+    <td className="whitespace-nowrap border border-border px-3 py-2">
+      {children}
+    </td>
+  );
 }
 
-function NumberTableCell({ value, edit }: { value: number; edit?: PayrollCellEditConfig }) {
+function NumberTableCell({
+  value,
+  edit,
+}: {
+  value: number;
+  edit?: PayrollCellEditConfig;
+}) {
   if (edit?.isEditable) {
     return <EditableNumberCell edit={edit} value={value} />;
   }
@@ -585,11 +740,17 @@ function MoneyTableCell({
 
 function getPayrollTotals(records: SalaryRecord[]) {
   return Object.fromEntries(
-    payrollDisplayColumns.map((column) => [column, sumRecords(records, column as keyof SalaryRecord)]),
+    payrollDisplayColumns.map((column) => [
+      column,
+      sumRecords(records, column as keyof SalaryRecord),
+    ]),
   ) as Record<PayrollEmployeeViewColumn, number>;
 }
 
-function getMoneyToneClass(tone: "neutral" | "base" | "positive" | "negative" | "net", value: number) {
+function getMoneyToneClass(
+  tone: "neutral" | "base" | "positive" | "negative" | "net",
+  value: number,
+) {
   if (value === 0) {
     return "bg-muted/40 text-muted-foreground";
   }
@@ -622,11 +783,17 @@ function groupPayrollRecords(records: SalaryRecord[]) {
     const groupName = record.departmentName || "Chưa phân bộ phận";
     groups.set(groupName, [...(groups.get(groupName) ?? []), record]);
   }
-  return Array.from(groups, ([name, groupRecords]) => ({ name, records: groupRecords }));
+  return Array.from(groups, ([name, groupRecords]) => ({
+    name,
+    records: groupRecords,
+  }));
 }
 
 function toRoman(value: number) {
-  return ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"][value - 1] ?? String(value);
+  return (
+    ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"][value - 1] ??
+    String(value)
+  );
 }
 
 function sumRecords(records: SalaryRecord[], key: keyof SalaryRecord) {
@@ -634,5 +801,7 @@ function sumRecords(records: SalaryRecord[], key: keyof SalaryRecord) {
 }
 
 function formatNumber(value: number) {
-  return new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 }).format(value);
+  return new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 2 }).format(
+    value,
+  );
 }
