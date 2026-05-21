@@ -49,7 +49,7 @@ const fieldLabels: Record<string, string> = {
   ...payrollColumnLabels,
   standardWorkDay: "Công chuẩn",
   allowanceTotal: "Tổng phụ cấp",
-  bonusTotal: "Tổng thưởng",
+  bonusTotal: "Thưởng lễ",
   totalInsurance: "Tổng BHXH",
 };
 

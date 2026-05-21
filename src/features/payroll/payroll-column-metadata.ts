@@ -28,6 +28,7 @@ export const payrollColumnLabels: Record<PayrollEmployeeViewColumn, string> = {
   totalWorkDay: "Tổng công",
   earnedSalary: "Lương trong tháng",
   overtimeTotal: "Lương tăng ca",
+  bonusTotal: "Thưởng lễ",
   grossSalary: "Tổng lương",
   employerInsuranceTotal: "BHXH công ty",
   insuranceTotal: "BHXH NLĐ",

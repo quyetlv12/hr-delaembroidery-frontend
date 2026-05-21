@@ -191,6 +191,16 @@ const payrollColumnDefinitions: PayrollColumnDefinition[] = [
     footer: "sum",
   },
   {
+    key: "bonusTotal",
+    label: "Thưởng lễ",
+    width: "min-w-32",
+    kind: "money",
+    align: "right",
+    sign: "plus",
+    tone: "positive",
+    footer: "sum",
+  },
+  {
     key: "grossSalary",
     label: "Tổng lương",
     width: "min-w-36",
@@ -315,7 +325,7 @@ const groupDefinitions = [
   },
   {
     label: "Lương được hưởng",
-    columns: ["earnedSalary", "overtimeTotal", "grossSalary"],
+    columns: ["earnedSalary", "overtimeTotal", "bonusTotal", "grossSalary"],
   },
   {
     label: "Bảng tính BHXH",

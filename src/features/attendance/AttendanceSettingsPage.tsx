@@ -38,6 +38,8 @@ const defaultSettings: AttendanceSettings = {
   nightStart: "18:00",
   nightEnd: "21:00",
   overtimeRate: 1.5,
+  holidayRate: 2,
+  weeklyDaysOff: [0],
 };
 export function AttendanceSettingsPage() {
   const settingsQuery = useQuery({
@@ -172,27 +174,35 @@ function AttendanceSettingsForm({ initialValues }: { initialValues: AttendanceSe
             <div>
               <h2 className="text-base font-semibold text-card-foreground">Cài đặt lương OT</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Lương OT đang tính theo hệ số {formatMultiplier(formValues.overtimeRate)}. Áp dụng cho preview nhập công
-                và bảng lương khi tính lại.
+                Lương OT hệ số {formatMultiplier(formValues.overtimeRate)}; lương ngày lễ hệ số{" "}
+                {formatMultiplier(formValues.holidayRate)}. Áp dụng khi nhập công và tính lại bảng lương.
               </p>
             </div>
           </div>
         </div>
 
-        <div className="grid gap-4 px-4 py-5 md:grid-cols-[minmax(280px,420px)_1fr] md:px-5">
+        <div className="grid gap-4 px-4 py-5 md:grid-cols-2 md:px-5">
           <NumberField
             description="Ví dụ 1.5 nghĩa là mỗi giờ tăng ca được nhân 1,5 lần lương giờ."
             label="Hệ số lương OT"
             value={formValues.overtimeRate}
             onChange={(value) => handleChange("overtimeRate", value)}
           />
+          <NumberField
+            description="Ví dụ 2 nghĩa là ngày lễ đi làm được tính 2 lần lương ngày."
+            label="Hệ số lương ngày lễ"
+            value={formValues.holidayRate}
+            onChange={(value) => handleChange("holidayRate", value)}
+          />
+        </div>
+        <div className="px-4 pb-5 md:px-5">
           <div className="rounded-md border border-emerald-100 bg-emerald-50/70 p-4 dark:border-emerald-900 dark:bg-emerald-950/40">
             <p className="text-sm font-medium text-emerald-700 dark:text-emerald-200">Công thức tính OT</p>
             <p className="mt-2 text-sm leading-6 text-foreground">
               Lương OT = Lương giờ x Số giờ tăng ca x Hệ số OT.
             </p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Hệ số này chỉ ảnh hưởng phần tăng ca, không thay đổi lương công, phụ cấp, khấu trừ, bảo hiểm hoặc thuế.
+              Ngày được đánh dấu lễ sẽ không cộng vào OT; hệ thống tính riêng tiền lễ = lương ngày x công lễ x hệ số lễ.
             </p>
           </div>
         </div>
@@ -926,6 +936,7 @@ const payrollColumnLabels: Record<PayrollEmployeeViewColumn, string> = {
   totalWorkDay: "Tổng công",
   earnedSalary: "Lương trong tháng",
   overtimeTotal: "Lương tăng ca",
+  bonusTotal: "Thưởng lễ",
   grossSalary: "Tổng lương",
   employerInsuranceTotal: "BHXH công ty",
   insuranceTotal: "BHXH NLĐ",

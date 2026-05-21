@@ -44,6 +44,8 @@ export type AttendanceSettings = {
   nightStart: string;
   nightEnd: string;
   overtimeRate: number;
+  holidayRate: number;
+  weeklyDaysOff: number[];
 };
 
 export type AttendanceMonthSetting = {
@@ -77,6 +79,8 @@ export type UpdateHolidaySettingsInput = {
   year: number;
   holidays: Array<{
     date: string;
+    name?: string;
+    isPaid?: boolean;
     amount: number;
   }>;
 };

@@ -147,12 +147,14 @@ export type PayrollFormulaColumnKey =
   | "dailyTotal"
   | "earnedSalary"
   | "overtimeTotal"
+  | "bonusTotal"
   | "grossSalary"
   | "employerInsuranceTotal"
   | "insuranceTotal"
   | "taxTotal"
   | "advanceTotal"
   | "deductionTotal"
+  | "bonus"
   | "netSalary";
 
 export type PayrollFormulaColumn = {
