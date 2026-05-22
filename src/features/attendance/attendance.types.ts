@@ -386,12 +386,21 @@ export type AttendanceServerSettings = {
   autoSyncEnabled: boolean;
   autoSyncMonthDataId: string;
   autoSyncMonthMappings: Array<{ period: string; monthDataId: string }>;
+  autoSyncShiftWindows: AttendanceAutoSyncShiftWindow[];
   autoSyncStartOffsetMinutes: number;
   autoSyncWindowMinutes: number;
   autoSyncIntervalMinutes: number;
   autoSyncLastRunAt: string | null;
   autoSyncLastStatus: string | null;
   autoSyncLastMessage: string | null;
+};
+
+export type AttendanceAutoSyncShiftWindow = {
+  key: "morning" | "afternoon" | "night";
+  enabled: boolean;
+  startTime: string;
+  endTime: string;
+  intervalMinutes: number;
 };
 
 export type UpdateAttendanceServerSettingsInput = {
@@ -401,6 +410,7 @@ export type UpdateAttendanceServerSettingsInput = {
   autoSyncEnabled?: boolean;
   autoSyncMonthDataId?: string;
   autoSyncMonthMappings?: Array<{ period: string; monthDataId: string }>;
+  autoSyncShiftWindows?: AttendanceAutoSyncShiftWindow[];
   autoSyncStartOffsetMinutes?: number;
   autoSyncWindowMinutes?: number;
   autoSyncIntervalMinutes?: number;

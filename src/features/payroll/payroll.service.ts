@@ -5,6 +5,8 @@ import type {
   PayrollFormulaHistoryEntry,
   PayrollFormulaSetting,
   PayrollFormulaTemplate,
+  PayrollPayslipEmailResponse,
+  PayrollPayslipTestEmailResult,
   PayrollRecordHistoryEntry,
   PayrollRecordUpdateInput,
   PayrollResponse,
@@ -97,6 +99,22 @@ export async function getPayrollRecordHistory(periodId: string) {
 
 export async function revertPayrollRecordHistory(historyId: string) {
   const response = await api.post<ApiResponse<PayrollResponse>>(`/payroll/record-history/${historyId}/revert`);
+  return unwrapApiResponse(response.data);
+}
+
+export async function sendPayrollPayslipEmails(periodId: string, recordIds: string[]) {
+  const response = await api.post<ApiResponse<PayrollPayslipEmailResponse>>(
+    `/payroll/periods/${periodId}/payslip-emails`,
+    { recordIds },
+  );
+  return unwrapApiResponse(response.data);
+}
+
+export async function sendPayrollPayslipTestEmail(recordId: string, email: string) {
+  const response = await api.post<ApiResponse<PayrollPayslipTestEmailResult>>(
+    `/payroll/records/${recordId}/payslip-test-email`,
+    { email },
+  );
   return unwrapApiResponse(response.data);
 }
 

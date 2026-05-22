@@ -138,6 +138,34 @@ export type PayrollResponse = {
   visibleColumns: PayrollEmployeeViewColumn[];
 };
 
+export type PayrollPayslipEmailResult = {
+  recordId: string;
+  employeeId: string;
+  employeeCode: string;
+  employeeName: string;
+  email: string;
+  status: "sent" | "failed";
+  errorMessage?: string;
+};
+
+export type PayrollPayslipEmailResponse = {
+  total: number;
+  sent: number;
+  failed: number;
+  results: PayrollPayslipEmailResult[];
+};
+
+export type PayrollPayslipTestEmailResult = {
+  recordId: string;
+  employeeId: string;
+  employeeCode: string;
+  employeeName: string;
+  originalEmployeeEmail: string;
+  email: string;
+  messageId?: string;
+  sentAt: string;
+};
+
 export type PayrollFormulaColumnKey =
   | "fixedDailySalary"
   | "responsibilityAllowance"

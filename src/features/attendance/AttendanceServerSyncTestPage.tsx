@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { parseCurlRequest } from "@/lib/curl";
 import { cn } from "@/lib/utils";
 import { showApiError, showSuccess, showWarning } from "@/lib/toast";
+import { getVietnamCurrentPeriod, getVietnamDateParts } from "@/lib/vietnam-time";
 
 import {
   getAttendanceServerSettings,
@@ -50,11 +51,11 @@ const DEFAULT_ATTENDANCE_ENDPOINT =
 export function AttendanceServerSyncTestPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const now = new Date();
+  const now = getVietnamDateParts();
   const [form, setForm] = useState<AttendanceServerSyncTestInput>(defaultForm);
   const [importPeriod, setImportPeriod] = useState({
-    month: now.getMonth() + 1,
-    year: now.getFullYear(),
+    month: now.month,
+    year: now.year,
   });
   const [curlText, setCurlText] = useState("");
   const [adminBodyText, setAdminBodyText] = useState("");
@@ -736,8 +737,7 @@ function formatPeriodLabel(period: string) {
 }
 
 function getCurrentPeriod() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  return getVietnamCurrentPeriod();
 }
 
 function parseCurlCommand(

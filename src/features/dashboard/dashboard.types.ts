@@ -11,6 +11,22 @@ export type DashboardSummary = {
     positionName: string;
     lateMinutes: number;
     firstCheckInAt: string | null;
+    attendance: {
+      date: string;
+      workDay: number;
+      lateMinutes: number;
+      earlyLeaveMinutes: number;
+      overtimeMinutes: number;
+      status: string;
+      shifts: Array<{
+        key: "morning" | "afternoon" | "night";
+        label: string;
+        plannedStart: string;
+        plannedEnd: string;
+        checkInAt: string | null;
+        checkOutAt: string | null;
+      }>;
+    };
   }>;
   monthlyPayroll: number;
   overtimeHours: number;

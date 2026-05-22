@@ -20,6 +20,7 @@ import {
   type PayrollEmployeeViewColumn,
 } from "@/features/employee-view-settings/employee-view-settings.types";
 import { showApiError, showSuccess, showWarning } from "@/lib/toast";
+import { getVietnamCurrentPeriod, VIETNAM_TIME_ZONE } from "@/lib/vietnam-time";
 
 import {
   getAttendanceServerSettings,
@@ -28,7 +29,7 @@ import {
   updateAttendanceSettings,
 } from "./attendance.service";
 import { ColumnChecklist } from "./components/ColumnChecklist";
-import type { AttendanceServerSettings, AttendanceSettings } from "./attendance.types";
+import type { AttendanceAutoSyncShiftWindow, AttendanceServerSettings, AttendanceSettings } from "./attendance.types";
 
 const defaultSettings: AttendanceSettings = {
   morningStart: "07:30",
@@ -266,33 +267,14 @@ function AttendanceAutoSyncSettingsForm({
     autoSyncEnabled: serverSettings.autoSyncEnabled,
     autoSyncMonthDataId: serverSettings.autoSyncMonthDataId,
     autoSyncMonthMappings: getInitialMonthMappings(serverSettings),
+    autoSyncShiftWindows: getInitialShiftWindows(serverSettings, shiftSettings),
     autoSyncStartOffsetMinutes: serverSettings.autoSyncStartOffsetMinutes,
     autoSyncWindowMinutes: serverSettings.autoSyncWindowMinutes,
     autoSyncIntervalMinutes: serverSettings.autoSyncIntervalMinutes,
   });
   const syncWindows = useMemo(
-    () =>
-      [
-        { label: "Ca sáng", shiftStart: shiftSettings.morningStart },
-        { label: "Ca chiều", shiftStart: shiftSettings.afternoonStart },
-        { label: "Ca 3", shiftStart: shiftSettings.nightStart },
-      ].map((shift) => ({
-        ...shift,
-        windowText: formatSyncWindow(
-          shift.shiftStart,
-          formValues.autoSyncStartOffsetMinutes,
-          formValues.autoSyncWindowMinutes,
-          formValues.autoSyncIntervalMinutes,
-        ),
-      })),
-    [
-      formValues.autoSyncIntervalMinutes,
-      formValues.autoSyncStartOffsetMinutes,
-      formValues.autoSyncWindowMinutes,
-      shiftSettings.afternoonStart,
-      shiftSettings.morningStart,
-      shiftSettings.nightStart,
-    ],
+    () => normalizeAutoSyncShiftWindows(formValues.autoSyncShiftWindows),
+    [formValues.autoSyncShiftWindows],
   );
   const monthMappingOptions = useMemo(
     () => normalizeMonthMappings(formValues.autoSyncMonthMappings),
@@ -307,6 +289,7 @@ function AttendanceAutoSyncSettingsForm({
         autoSyncEnabled: data.autoSyncEnabled,
         autoSyncMonthDataId: data.autoSyncMonthDataId,
         autoSyncMonthMappings: getInitialMonthMappings(data),
+        autoSyncShiftWindows: getInitialShiftWindows(data, shiftSettings),
         autoSyncStartOffsetMinutes: data.autoSyncStartOffsetMinutes,
         autoSyncWindowMinutes: data.autoSyncWindowMinutes,
         autoSyncIntervalMinutes: data.autoSyncIntervalMinutes,
@@ -319,11 +302,16 @@ function AttendanceAutoSyncSettingsForm({
     },
   });
 
-  const updateNumber = (
-    key: "autoSyncStartOffsetMinutes" | "autoSyncWindowMinutes" | "autoSyncIntervalMinutes",
-    value: number,
+  const updateShiftWindow = (
+    key: AttendanceAutoSyncShiftWindow["key"],
+    patch: Partial<AttendanceAutoSyncShiftWindow>,
   ) => {
-    setFormValues((current) => ({ ...current, [key]: Number.isFinite(value) ? value : 0 }));
+    setFormValues((current) => ({
+      ...current,
+      autoSyncShiftWindows: current.autoSyncShiftWindows.map((window) =>
+        window.key === key ? { ...window, ...patch } : window,
+      ),
+    }));
   };
 
   const handleSave = () => {
@@ -341,6 +329,14 @@ function AttendanceAutoSyncSettingsForm({
       showWarning("Vui lòng chọn tháng máy chấm công để tự động đồng bộ.");
       return;
     }
+    if (formValues.autoSyncEnabled && syncWindows.every((window) => !window.enabled)) {
+      showWarning("Vui lòng bật ít nhất một ca để tự động đồng bộ.");
+      return;
+    }
+    if (syncWindows.some((window) => window.enabled && window.startTime === window.endTime)) {
+      showWarning("Giờ bắt đầu và giờ tự tắt của mỗi ca phải khác nhau.");
+      return;
+    }
 
     updateServerSettingsMutation.mutate({
       attendanceEndpoint: serverSettings.attendanceEndpoint,
@@ -349,6 +345,7 @@ function AttendanceAutoSyncSettingsForm({
       autoSyncEnabled: formValues.autoSyncEnabled,
       autoSyncMonthDataId,
       autoSyncMonthMappings: monthMappingOptions,
+      autoSyncShiftWindows: syncWindows,
       autoSyncStartOffsetMinutes: formValues.autoSyncStartOffsetMinutes,
       autoSyncWindowMinutes: formValues.autoSyncWindowMinutes,
       autoSyncIntervalMinutes: formValues.autoSyncIntervalMinutes,
@@ -413,28 +410,8 @@ function AttendanceAutoSyncSettingsForm({
               )}
             </label>
 
-            <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
-              <AutoSyncNumberField
-                disabled={!formValues.autoSyncEnabled}
-                label="Bắt đầu sau giờ vào ca"
-                suffix="phút"
-                value={formValues.autoSyncStartOffsetMinutes}
-                onChange={(value) => updateNumber("autoSyncStartOffsetMinutes", value)}
-              />
-              <AutoSyncNumberField
-                disabled={!formValues.autoSyncEnabled}
-                label="Tự tắt sau"
-                suffix="phút"
-                value={formValues.autoSyncWindowMinutes}
-                onChange={(value) => updateNumber("autoSyncWindowMinutes", value)}
-              />
-              <AutoSyncNumberField
-                disabled={!formValues.autoSyncEnabled}
-                label="Lặp lại mỗi"
-                suffix="phút"
-                value={formValues.autoSyncIntervalMinutes}
-                onChange={(value) => updateNumber("autoSyncIntervalMinutes", value)}
-              />
+            <div className="rounded-md border border-sky-200 bg-background/80 px-3 py-2 text-sm text-sky-900 dark:border-sky-900 dark:bg-background">
+              Cronjob backend kiểm tra mỗi phút và tự chạy theo khung giờ đang lưu trong database.
             </div>
           </div>
 
@@ -453,7 +430,7 @@ function AttendanceAutoSyncSettingsForm({
             <div>
               <p className="text-sm font-semibold text-foreground">Khung tự chạy theo giờ vào ca</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Ví dụ ca sáng 07:30, bắt đầu sau 60 phút nghĩa là tự đồng bộ từ 08:30 đến 09:30.
+                Chọn giờ bắt đầu, giờ tự tắt và chu kỳ lặp cho từng ca. Backend đọc cấu hình này mỗi phút.
               </p>
             </div>
             <span
@@ -466,10 +443,53 @@ function AttendanceAutoSyncSettingsForm({
 
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             {syncWindows.map((window) => (
-              <div className="rounded-md border border-border bg-card p-3" key={window.label}>
-                <p className="text-xs font-semibold uppercase text-muted-foreground">{window.label}</p>
-                <p className="mt-2 text-sm font-bold text-foreground">{window.windowText}</p>
-                <p className="mt-1 text-xs text-muted-foreground">Giờ vào ca: {window.shiftStart}</p>
+              <div className="rounded-md border border-border bg-card p-3" key={window.key}>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-muted-foreground">
+                      {getShiftWindowLabel(window.key)}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {window.enabled
+                        ? `${window.startTime} - ${window.endTime} · ${window.intervalMinutes} phút/lần`
+                        : "Không tự động đồng bộ ca này"}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={window.enabled}
+                    disabled={!formValues.autoSyncEnabled}
+                    onCheckedChange={(checked: boolean) => updateShiftWindow(window.key, { enabled: Boolean(checked) })}
+                  />
+                </div>
+                <div className="mt-3 grid gap-2">
+                  <label className="block">
+                    <span className="text-[11px] font-semibold uppercase text-muted-foreground">Bắt đầu chạy</span>
+                    <input
+                      className="mt-1 h-10 w-full rounded-md border border-[var(--field-border)] bg-[var(--field-bg)] px-3 text-sm font-semibold text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={!formValues.autoSyncEnabled || !window.enabled}
+                      type="time"
+                      value={window.startTime}
+                      onChange={(event) => updateShiftWindow(window.key, { startTime: event.target.value })}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-[11px] font-semibold uppercase text-muted-foreground">Tự tắt lúc</span>
+                    <input
+                      className="mt-1 h-10 w-full rounded-md border border-[var(--field-border)] bg-[var(--field-bg)] px-3 text-sm font-semibold text-foreground outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={!formValues.autoSyncEnabled || !window.enabled}
+                      type="time"
+                      value={window.endTime}
+                      onChange={(event) => updateShiftWindow(window.key, { endTime: event.target.value })}
+                    />
+                  </label>
+                  <AutoSyncNumberField
+                    disabled={!formValues.autoSyncEnabled || !window.enabled}
+                    label="Lặp lại mỗi"
+                    suffix="phút"
+                    value={window.intervalMinutes}
+                    onChange={(value) => updateShiftWindow(window.key, { intervalMinutes: value })}
+                  />
+                </div>
               </div>
             ))}
           </div>
@@ -819,18 +839,6 @@ function formatDuration(minutes: number) {
   return `${hours} giờ ${remainMinutes} phút`;
 }
 
-function formatSyncWindow(
-  shiftStart: string,
-  startOffsetMinutes: number,
-  windowMinutes: number,
-  intervalMinutes: number,
-) {
-  const startMinute = timeToMinutes(shiftStart) + normalizeSyncNumber(startOffsetMinutes, 60);
-  const stopMinute = startMinute + normalizeSyncNumber(windowMinutes, 60);
-  const interval = normalizeSyncNumber(intervalMinutes, 10);
-  return `${formatClockFromMinutes(startMinute)} - ${formatClockFromMinutes(stopMinute)} · ${interval} phút/lần`;
-}
-
 function normalizeSyncNumber(value: number, fallback: number) {
   return Number.isFinite(value) && value >= 0 ? value : fallback;
 }
@@ -838,10 +846,9 @@ function normalizeSyncNumber(value: number, fallback: number) {
 function formatClockFromMinutes(totalMinutes: number) {
   const minutesPerDay = 24 * 60;
   const normalized = ((totalMinutes % minutesPerDay) + minutesPerDay) % minutesPerDay;
-  const dayOffset = Math.floor(totalMinutes / minutesPerDay);
   const hours = Math.floor(normalized / 60);
   const minutes = normalized % 60;
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}${dayOffset > 0 ? ` +${dayOffset} ngày` : ""}`;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
 function formatDateTime(value?: string | null) {
@@ -850,12 +857,91 @@ function formatDateTime(value?: string | null) {
   }
 
   return new Intl.DateTimeFormat("vi-VN", {
+    timeZone: VIETNAM_TIME_ZONE,
     hour: "2-digit",
     minute: "2-digit",
     day: "2-digit",
     month: "2-digit",
     year: "2-digit",
   }).format(new Date(value));
+}
+
+const autoSyncShiftKeys: AttendanceAutoSyncShiftWindow["key"][] = ["morning", "afternoon", "night"];
+
+function getInitialShiftWindows(
+  settings: AttendanceServerSettings,
+  shiftSettings: AttendanceSettings,
+): AttendanceAutoSyncShiftWindow[] {
+  const normalized = normalizeAutoSyncShiftWindows(settings.autoSyncShiftWindows ?? []);
+  if (normalized.length === autoSyncShiftKeys.length) {
+    return normalized;
+  }
+
+  return buildDefaultShiftWindows(settings, shiftSettings);
+}
+
+function normalizeAutoSyncShiftWindows(
+  windows: AttendanceAutoSyncShiftWindow[],
+): AttendanceAutoSyncShiftWindow[] {
+  const mapped = new Map<AttendanceAutoSyncShiftWindow["key"], AttendanceAutoSyncShiftWindow>();
+  for (const window of windows) {
+    if (!autoSyncShiftKeys.includes(window.key) || !isTimeValue(window.startTime) || !isTimeValue(window.endTime)) {
+      continue;
+    }
+
+    const intervalMinutes = Math.min(120, Math.max(1, Math.round(Number(window.intervalMinutes) || 10)));
+    mapped.set(window.key, {
+      key: window.key,
+      enabled: Boolean(window.enabled),
+      startTime: window.startTime,
+      endTime: window.endTime,
+      intervalMinutes,
+    });
+  }
+
+  return autoSyncShiftKeys.flatMap((key) => {
+    const window = mapped.get(key);
+    return window ? [window] : [];
+  });
+}
+
+function buildDefaultShiftWindows(
+  settings: AttendanceServerSettings,
+  shiftSettings: AttendanceSettings,
+): AttendanceAutoSyncShiftWindow[] {
+  const startOffsetMinutes = normalizeSyncNumber(settings.autoSyncStartOffsetMinutes, 60);
+  const windowMinutes = normalizeSyncNumber(settings.autoSyncWindowMinutes, 60);
+  const intervalMinutes = Math.min(120, Math.max(1, Math.round(normalizeSyncNumber(settings.autoSyncIntervalMinutes, 10))));
+  const shifts: Array<[AttendanceAutoSyncShiftWindow["key"], string]> = [
+    ["morning", shiftSettings.morningStart],
+    ["afternoon", shiftSettings.afternoonStart],
+    ["night", shiftSettings.nightStart],
+  ];
+
+  return shifts.map(([key, shiftStart]) => {
+    const startMinute = timeToMinutes(shiftStart) + startOffsetMinutes;
+    return {
+      key,
+      enabled: true,
+      startTime: formatClockFromMinutes(startMinute),
+      endTime: formatClockFromMinutes(startMinute + windowMinutes),
+      intervalMinutes,
+    };
+  });
+}
+
+function getShiftWindowLabel(key: AttendanceAutoSyncShiftWindow["key"]) {
+  if (key === "morning") {
+    return "Ca sáng";
+  }
+  if (key === "afternoon") {
+    return "Ca chiều";
+  }
+  return "Ca 3";
+}
+
+function isTimeValue(value: string) {
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 }
 
 function getInitialMonthMappings(settings: AttendanceServerSettings) {
@@ -905,8 +991,7 @@ function formatPeriodLabel(period: string) {
 }
 
 function getCurrentPeriod() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  return getVietnamCurrentPeriod();
 }
 
 function formatMultiplier(value: number) {

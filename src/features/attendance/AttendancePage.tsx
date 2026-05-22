@@ -29,6 +29,7 @@ import {
 } from "@/features/employee-view-settings/employee-view-settings.types";
 import { usePermission } from "@/hooks/use-permission";
 import { showApiError, showSuccess, showWarning } from "@/lib/toast";
+import { getVietnamCurrentPeriod, getVietnamDateParts } from "@/lib/vietnam-time";
 
 import {
   getAttendance,
@@ -73,9 +74,9 @@ export function AttendancePage() {
   const [isManualSyncOpen, setIsManualSyncOpen] = useState(false);
   const [keyword, setKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState<AttendanceStatusFilter>("all");
-  const now = new Date();
-  const month = getValidMonth(searchParams.get("month"), now.getMonth() + 1);
-  const year = getValidYear(searchParams.get("year"), now.getFullYear());
+  const today = getVietnamDateParts();
+  const month = getValidMonth(searchParams.get("month"), today.month);
+  const year = getValidYear(searchParams.get("year"), today.year);
   const periodDate = new Date(year, month - 1, 1);
 
   const attendanceQuery = useQuery({
@@ -192,12 +193,13 @@ export function AttendancePage() {
           <AppMonthPicker
             label="Kỳ chấm công"
             value={periodDate}
-            onChange={(date) =>
+            onChange={(date) => {
+              const selected = getVietnamDateParts(date);
               setSearchParams({
-                month: String(date.getMonth() + 1),
-                year: String(date.getFullYear()),
-              })
-            }
+                month: String(selected.month),
+                year: String(selected.year),
+              });
+            }}
           />
           <label className="space-y-2">
             <span className="text-sm font-medium text-foreground">Tìm nhân viên</span>
@@ -339,7 +341,8 @@ function ManualServerSyncModal({
 
   const handleTargetChange = (date: Date) => {
     setTargetDate(date);
-    const nextPeriod = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    const selected = getVietnamDateParts(date);
+    const nextPeriod = `${selected.year}-${String(selected.month).padStart(2, "0")}`;
     const matchingSource = mappings.find((mapping) => mapping.period === nextPeriod);
     if (matchingSource) {
       setSourcePeriod(matchingSource.period);
@@ -354,8 +357,8 @@ function ManualServerSyncModal({
     onSync({
       monthDataId: selectedMapping.monthDataId,
       sourcePeriod: selectedMapping.period,
-      month: targetDate.getMonth() + 1,
-      year: targetDate.getFullYear(),
+      month: getVietnamDateParts(targetDate).month,
+      year: getVietnamDateParts(targetDate).year,
     });
   };
 
@@ -1036,8 +1039,7 @@ function formatPeriodLabel(period: string) {
 }
 
 function getCurrentPeriod() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  return getVietnamCurrentPeriod();
 }
 
 function roundNumber(value: number) {

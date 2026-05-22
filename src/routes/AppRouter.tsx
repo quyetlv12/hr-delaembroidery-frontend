@@ -72,6 +72,11 @@ const PayrollFormulaSettingsPage = lazy(() =>
     default: module.PayrollFormulaSettingsPage,
   })),
 );
+const EmailSettingsPage = lazy(() =>
+  import("@/features/email-settings/EmailSettingsPage").then((module) => ({
+    default: module.EmailSettingsPage,
+  })),
+);
 const RolesPermissionsPage = lazy(() =>
   import("@/features/roles-permissions/RolesPermissionsPage").then((module) => ({
     default: module.RolesPermissionsPage,
@@ -227,6 +232,14 @@ export function AppRouter() {
               </ProtectedRoute>
             }
             path="payroll/formulas"
+          />
+          <Route
+            element={
+              <ProtectedRoute permission={permissions.payslipEmailSend}>
+                <EmailSettingsPage />
+              </ProtectedRoute>
+            }
+            path="settings/email"
           />
           <Route
             element={

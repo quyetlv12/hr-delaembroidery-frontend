@@ -6,6 +6,7 @@ import {
   History,
   Lock,
   LockOpen,
+  Mail,
   RotateCcw,
   Search,
 } from "lucide-react";
@@ -22,7 +23,7 @@ import { AppMonthPicker } from "@/components/form/AppMonthPicker";
 import { permissions } from "@/constants/permissions";
 import { usePermission } from "@/hooks/use-permission";
 import { confirmLockPayroll, confirmUnlockPayroll } from "@/lib/confirm";
-import { showApiError, showSuccess } from "@/lib/toast";
+import { showApiError, showSuccess, showWarning } from "@/lib/toast";
 
 import {
   filterPayrollDisplayColumns,
@@ -36,10 +37,12 @@ import {
   getPayrollFormulaTemplates,
   lockPayroll,
   restorePayrollBonuses,
+  sendPayrollPayslipEmails,
   unlockPayroll,
   updatePayrollRecord,
 } from "./payroll.service";
 import { FormulaPickerDialog } from "./components/FormulaPickerDialog";
+import { PayslipEmailDialog } from "./components/PayslipEmailDialog";
 import { PayrollExcelTable } from "./components/PayrollExcelTable";
 import { PayrollRecordHistoryDialog } from "./components/PayrollRecordHistoryDialog";
 import { PayrollSummaryMetrics } from "./components/PayrollSummaryMetrics";
@@ -68,6 +71,7 @@ export function PayrollPage() {
   const [statusFilter, setStatusFilter] = useState<PayrollStatusFilter>("all");
   const [formulaPickerOpen, setFormulaPickerOpen] = useState(false);
   const [recordHistoryOpen, setRecordHistoryOpen] = useState(false);
+  const [payslipEmailOpen, setPayslipEmailOpen] = useState(false);
   const [selectedFormulaSource, setSelectedFormulaSource] = useState("current");
   const month = periodDate.getMonth() + 1;
   const year = periodDate.getFullYear();
@@ -208,6 +212,29 @@ export function PayrollPage() {
     },
   });
 
+  const payslipEmailMutation = useMutation({
+    mutationFn: async (recordIds: string[]) => {
+      if (!period) {
+        throw new Error("Chưa có kỳ lương để gửi phiếu lương");
+      }
+
+      return sendPayrollPayslipEmails(period.id, recordIds);
+    },
+    onSuccess(result) {
+      setPayslipEmailOpen(false);
+      if (result.failed > 0) {
+        showWarning(`Đã gửi ${result.sent}/${result.total} phiếu lương`, {
+          description: `${result.failed} email lỗi. Vui lòng kiểm tra email nhân viên hoặc cấu hình SMTP.`,
+        });
+      } else {
+        showSuccess(`Đã gửi ${result.sent} phiếu lương`);
+      }
+    },
+    onError(error) {
+      showApiError(error);
+    },
+  });
+
   const updateRecordMutation = useMutation({
     mutationFn: ({
       recordId,
@@ -341,6 +368,18 @@ export function PayrollPage() {
                   : "Xuất file chuyển tiền"}
               </Button>
             </RequirePermission>
+            <RequirePermission permission={permissions.payslipEmailSend}>
+              <Button
+                disabled={
+                  !period || records.length === 0 || payslipEmailMutation.isPending
+                }
+                variant="secondary"
+                onClick={() => setPayslipEmailOpen(true)}
+              >
+                <Mail size={18} />
+                {payslipEmailMutation.isPending ? "Đang gửi..." : "Gửi phiếu lương"}
+              </Button>
+            </RequirePermission>
             <RequirePermission permission={permissions.payrollLock}>
               <Button
                 disabled={
@@ -397,6 +436,15 @@ export function PayrollPage() {
             queryKey: ["dashboard-summary"],
           });
         }}
+      />
+
+      <PayslipEmailDialog
+        isOpen={payslipEmailOpen}
+        isPending={payslipEmailMutation.isPending}
+        period={period}
+        records={records}
+        onOpenChange={setPayslipEmailOpen}
+        onSend={(recordIds) => payslipEmailMutation.mutate(recordIds)}
       />
 
       <section className="rounded-lg border border-border bg-card shadow-sm">

@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { confirmResetAttendancePayroll } from "@/lib/confirm";
 import { cn } from "@/lib/utils";
 import { showApiError, showSuccess, showWarning } from "@/lib/toast";
+import { getVietnamDateParts } from "@/lib/vietnam-time";
 
 import {
   confirmAttendanceImport,
@@ -40,18 +41,19 @@ const currencyFormatter = new Intl.NumberFormat("vi-VN", {
 export function AttendanceImportPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const now = new Date();
+  const now = getVietnamDateParts();
   const [file, setFile] = useState<File | null>(null);
   const [periodDate, setPeriodDate] = useState(
-    new Date(now.getFullYear(), now.getMonth(), 1),
+    new Date(now.year, now.month - 1, 1),
   );
   const [autoCreateMissingEmployees, setAutoCreateMissingEmployees] =
     useState(true);
   const [preview, setPreview] = useState<AttendancePreview | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const month = periodDate.getMonth() + 1;
-  const year = periodDate.getFullYear();
+  const periodParts = getVietnamDateParts(periodDate);
+  const month = periodParts.month;
+  const year = periodParts.year;
 
   const previewMutation = useMutation({
     mutationFn: (input: { file: File; month: number; year: number }) =>
@@ -264,8 +266,8 @@ export function AttendanceImportPage() {
             if (file) {
               previewMutation.mutate({
                 file,
-                month: date.getMonth() + 1,
-                year: date.getFullYear(),
+                month: getVietnamDateParts(date).month,
+                year: getVietnamDateParts(date).year,
               });
             }
           }}

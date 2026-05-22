@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { showApiError, showSuccess } from "@/lib/toast";
+import { getVietnamDateParts } from "@/lib/vietnam-time";
 
 import { getAttendanceSettings, getHolidaySettings, updateAttendanceSettings, updateHolidaySettings } from "./attendance.service";
 import type { AttendanceSettings, UpdateHolidaySettingsInput } from "./attendance.types";
@@ -73,7 +74,7 @@ const defaultAttendanceSettings: AttendanceSettings = {
 
 export function HolidaySettingsPage() {
   const queryClient = useQueryClient();
-  const [year, setYear] = useState(new Date().getFullYear());
+  const [year, setYear] = useState(getVietnamDateParts().year);
   const [activeDate, setActiveDate] = useState<string | null>(null);
   const holidayQuery = useQuery({
     queryKey: ["holiday-settings", year],

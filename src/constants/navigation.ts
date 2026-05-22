@@ -7,7 +7,7 @@ import {
   Calculator,
   FileBarChart,
   History,
-  RefreshCw,
+  Mail,
   ServerCog,
   Settings,
   ShieldCheck,
@@ -54,12 +54,12 @@ export const navItems: NavItem[] = [
     permission: permissions.attendanceRead,
     icon: CalendarClock,
   },
-  {
-    label: "Test đồng bộ",
-    path: "/attendance/server-sync-test",
-    permission: permissions.attendanceImport,
-    icon: RefreshCw,
-  },
+  // {
+  //   label: "Test đồng bộ",
+  //   path: "/attendance/server-sync-test",
+  //   permission: permissions.attendanceImport,
+  //   icon: RefreshCw,
+  // },
   {
     label: "Máy chấm công",
     path: "/attendance/server-sync-settings",
@@ -89,6 +89,12 @@ export const navItems: NavItem[] = [
     path: "/payroll/formulas",
     permission: permissions.payrollCalculate,
     icon: Calculator,
+  },
+  {
+    label: "Cài đặt email",
+    path: "/settings/email",
+    permission: permissions.payslipEmailSend,
+    icon: Mail,
   },
   {
     label: "Vai trò",

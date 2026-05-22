@@ -4,6 +4,8 @@ import {
   BarChart3,
   Clock,
   DollarSign,
+  LogIn,
+  LogOut,
   TrendingUp,
   UserCheck,
   UserX,
@@ -27,10 +29,21 @@ import {
 
 import { ErrorState } from "@/components/common/ErrorState";
 import { LoadingState } from "@/components/common/LoadingState";
+import { Button } from "@/components/common/Button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { getEmployees } from "@/features/employees/employee.service";
+import { toVietnamDateString, VIETNAM_TIME_ZONE } from "@/lib/vietnam-time";
 
 import { DashboardFilters } from "./components/DashboardFilters";
 import { getDashboardSummary } from "./dashboard.service";
+import type { DashboardSummary } from "./dashboard.types";
 
 // ── Formatters ──────────────────────────────────────────────────────────────
 const vndFmt = new Intl.NumberFormat("vi-VN", {
@@ -42,6 +55,11 @@ const shortVndFmt = new Intl.NumberFormat("vi-VN", {
   notation: "compact",
   maximumFractionDigits: 1,
 });
+const numberFmt = new Intl.NumberFormat("vi-VN", {
+  maximumFractionDigits: 2,
+});
+
+type TodayLateEmployeeRow = DashboardSummary["todayLateEmployeeRows"][number];
 
 // ── Palette ─────────────────────────────────────────────────────────────────
 const PIE_COLORS = [
@@ -58,20 +76,13 @@ const PIE_COLORS = [
 // ── Default range (last 6 months) ───────────────────────────────────────────
 function getDefaultRange() {
   const now = new Date();
-  const from = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-  const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const [year, month] = toVietnamDateString(now).split("-").map(Number);
+  const from = new Date(Date.UTC(year, month - 6, 1));
+  const to = new Date(Date.UTC(year, month, 0));
   return {
-    from: toDateString(from),
-    to: toDateString(to),
+    from: toVietnamDateString(from),
+    to: toVietnamDateString(to),
   };
-}
-
-function toDateString(date: Date) {
-  return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, "0"),
-    String(date.getDate()).padStart(2, "0"),
-  ].join("-");
 }
 
 // ── Stat card config ─────────────────────────────────────────────────────────
@@ -171,9 +182,6 @@ function AbsentEmployeesCard({
     }>;
   };
 }) {
-  const visibleRows = data.rows.slice(0, 8);
-  const hiddenCount = Math.max(0, data.total - visibleRows.length);
-
   return (
     <section className="rounded-xl border border-amber-200 bg-amber-50/70 p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -206,28 +214,33 @@ function AbsentEmployeesCard({
           Tất cả nhân viên thuộc {data.shiftLabel.toLowerCase()} đã có lượt chấm công vào ca.
         </div>
       ) : (
-        <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-          {visibleRows.map((employee) => (
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          {data.rows.map((employee) => (
             <div
-              className="flex min-w-0 items-center gap-3 rounded-lg border border-amber-200 bg-background px-3 py-2"
+              className="flex min-w-0 items-start gap-3 rounded-lg border border-amber-200 bg-background px-3 py-3"
               key={employee.employeeId}
             >
               <EmployeeAvatar employee={employee} />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-foreground">
-                  {employee.employeeCode} · {employee.fullName}
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-bold tabular-nums text-amber-800">
+                    {employee.employeeCode}
+                  </span>
+                  <p className="min-w-0 text-sm font-semibold leading-5 text-foreground">
+                    {employee.fullName}
+                  </p>
+                </div>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  <span className="font-medium text-foreground/80">{employee.departmentName}</span>
+                  <span className="mx-1 text-muted-foreground/70">·</span>
+                  {employee.positionName}
                 </p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {employee.departmentName} · {employee.positionName}
+                <p className="mt-1 text-xs font-medium text-amber-700">
+                  {employee.shiftCount} ca/ngày
                 </p>
               </div>
             </div>
           ))}
-          {hiddenCount > 0 ? (
-            <div className="flex items-center justify-center rounded-lg border border-dashed border-amber-300 bg-background/70 px-3 py-2 text-sm font-semibold text-amber-700">
-              +{hiddenCount} người khác
-            </div>
-          ) : null}
         </div>
       )}
     </section>
@@ -237,17 +250,9 @@ function AbsentEmployeesCard({
 function LateEmployeesCard({
   rows,
 }: {
-  rows: Array<{
-    employeeId: string;
-    employeeCode: string;
-    fullName: string;
-    avatarUrl: string | null;
-    departmentName: string;
-    positionName: string;
-    lateMinutes: number;
-    firstCheckInAt: string | null;
-  }>;
+  rows: TodayLateEmployeeRow[];
 }) {
+  const [selectedEmployee, setSelectedEmployee] = useState<TodayLateEmployeeRow | null>(null);
   const visibleRows = rows.slice(0, 10);
   const hiddenCount = Math.max(0, rows.length - visibleRows.length);
 
@@ -277,9 +282,12 @@ function LateEmployeesCard({
       ) : (
         <div className="mt-4 space-y-2">
           {visibleRows.map((employee) => (
-            <div
-              className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-rose-200 bg-background px-3 py-2"
+            <button
+              aria-label={`Xem chi tiết chấm công của ${employee.fullName}`}
+              className="flex w-full min-w-0 items-center justify-between gap-3 rounded-lg border border-rose-200 bg-background px-3 py-2 text-left transition hover:border-rose-300 hover:bg-rose-100/70 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-rose-300/50"
               key={employee.employeeId}
+              type="button"
+              onClick={() => setSelectedEmployee(employee)}
             >
               <div className="flex min-w-0 items-center gap-3">
                 <EmployeeAvatar employee={employee} />
@@ -298,7 +306,7 @@ function LateEmployeesCard({
                   {employee.firstCheckInAt ? `Vào ${employee.firstCheckInAt}` : "Chưa rõ giờ vào"}
                 </p>
               </div>
-            </div>
+            </button>
           ))}
           {hiddenCount > 0 ? (
             <div className="rounded-lg border border-dashed border-rose-300 bg-background/70 px-3 py-2 text-center text-sm font-semibold text-rose-700">
@@ -307,7 +315,162 @@ function LateEmployeesCard({
           ) : null}
         </div>
       )}
+
+      <LateAttendanceDialog
+        employee={selectedEmployee}
+        isOpen={Boolean(selectedEmployee)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedEmployee(null);
+          }
+        }}
+      />
     </section>
+  );
+}
+
+function LateAttendanceDialog({
+  employee,
+  isOpen,
+  onOpenChange,
+}: {
+  employee: TodayLateEmployeeRow | null;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  if (!employee) {
+    return null;
+  }
+
+  const allPunches = employee.attendance.shifts.flatMap((shift) =>
+    [
+      shift.checkInAt ? { label: `${shift.label} vào`, value: shift.checkInAt } : null,
+      shift.checkOutAt ? { label: `${shift.label} ra`, value: shift.checkOutAt } : null,
+    ].filter((item): item is { label: string; value: string } => Boolean(item)),
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>
+            Chi tiết chấm công - {employee.employeeCode} - {employee.fullName}
+          </DialogTitle>
+          <DialogDescription>
+            Ngày {formatDashboardDate(employee.attendance.date)} · hiển thị đầy đủ giờ vào/ra từng ca trong ngày.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-3 sm:grid-cols-4">
+          <LateMetric label="Ngày công" value={`${numberFmt.format(employee.attendance.workDay)} công`} />
+          <LateMetric label="Đi trễ" tone="danger" value={`${employee.attendance.lateMinutes} phút`} />
+          <LateMetric label="Về sớm" value={`${employee.attendance.earlyLeaveMinutes} phút`} />
+          <LateMetric label="Tăng ca" value={`${employee.attendance.overtimeMinutes} phút`} />
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-3">
+          {employee.attendance.shifts.map((shift) => {
+            const hasPunch = Boolean(shift.checkInAt || shift.checkOutAt);
+            return (
+              <div className="rounded-xl border border-border bg-card p-4 shadow-sm" key={shift.key}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-card-foreground">{shift.label}</h3>
+                    <p className="mt-1 text-xs font-medium text-muted-foreground">
+                      Ca chuẩn {shift.plannedStart} - {shift.plannedEnd}
+                    </p>
+                  </div>
+                  <span
+                    className={`rounded-full px-2 py-1 text-[11px] font-bold ${
+                      hasPunch ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {hasPunch ? "Có chấm" : "Chưa chấm"}
+                  </span>
+                </div>
+
+                <div className="mt-4 grid gap-2">
+                  <ShiftTimeRow icon={LogIn} label="Giờ vào" value={shift.checkInAt} />
+                  <ShiftTimeRow icon={LogOut} label="Giờ ra" value={shift.checkOutAt} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-sm font-bold text-rose-950">Tất cả mốc chấm công trong ngày</h3>
+            <span className="rounded-full bg-background px-2 py-1 text-xs font-bold text-rose-700">
+              {allPunches.length} lượt
+            </span>
+          </div>
+          {allPunches.length === 0 ? (
+            <p className="mt-3 text-sm text-muted-foreground">Chưa có dữ liệu chấm công trong ngày.</p>
+          ) : (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {allPunches.map((punch) => (
+                <span
+                  className="inline-flex items-center gap-2 rounded-lg border border-rose-200 bg-background px-3 py-2 text-sm font-semibold text-foreground"
+                  key={`${punch.label}-${punch.value}`}
+                >
+                  <Clock className="text-rose-600" size={14} />
+                  <span className="text-muted-foreground">{punch.label}</span>
+                  <span className="tabular-nums">{punch.value}</span>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="secondary" onClick={() => onOpenChange(false)}>
+            Đóng
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function LateMetric({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  tone?: "default" | "danger";
+}) {
+  return (
+    <div
+      className={`rounded-lg border px-3 py-3 ${
+        tone === "danger" ? "border-rose-200 bg-rose-50 text-rose-800" : "border-border bg-muted/30 text-foreground"
+      }`}
+    >
+      <p className="text-xs font-semibold text-muted-foreground">{label}</p>
+      <p className="mt-1 text-base font-bold tabular-nums">{value}</p>
+    </div>
+  );
+}
+
+function ShiftTimeRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string | null;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2">
+      <span className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground">
+        <Icon size={15} />
+        {label}
+      </span>
+      <span className="font-mono text-sm font-bold tabular-nums text-foreground">{value ?? "--:--"}</span>
+    </div>
   );
 }
 
@@ -403,6 +566,7 @@ export function DashboardPage() {
         </div>
         <span className="hidden rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground sm:inline-block">
           {new Date().toLocaleDateString("vi-VN", {
+            timeZone: VIETNAM_TIME_ZONE,
             weekday: "long",
             day: "2-digit",
             month: "2-digit",
@@ -471,16 +635,7 @@ function DashboardContent({
   employeesByDepartment: Array<{ department: string; total: number }>;
   attendanceByDay: Array<{ day: string; present: number; late: number }>;
   employeeGrowth: Array<{ month: string; total: number }>;
-  todayLateEmployeeRows: Array<{
-    employeeId: string;
-    employeeCode: string;
-    fullName: string;
-    avatarUrl: string | null;
-    departmentName: string;
-    positionName: string;
-    lateMinutes: number;
-    firstCheckInAt: string | null;
-  }>;
+  todayLateEmployeeRows: TodayLateEmployeeRow[];
   todayShiftAbsences: {
     date: string;
     shiftKey: "morning" | "afternoon" | "night" | "none";
