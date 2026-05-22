@@ -214,7 +214,7 @@ function AbsentEmployeesCard({
           Tất cả nhân viên thuộc {data.shiftLabel.toLowerCase()} đã có lượt chấm công vào ca.
         </div>
       ) : (
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-2">
           {data.rows.map((employee) => (
             <div
               className="flex min-w-0 items-start gap-3 rounded-lg border border-amber-200 bg-background px-3 py-3"
@@ -381,9 +381,8 @@ function LateAttendanceDialog({
                     </p>
                   </div>
                   <span
-                    className={`rounded-full px-2 py-1 text-[11px] font-bold ${
-                      hasPunch ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"
-                    }`}
+                    className={`rounded-full px-2 py-1 text-[11px] font-bold ${hasPunch ? "bg-emerald-50 text-emerald-700" : "bg-muted text-muted-foreground"
+                      }`}
                   >
                     {hasPunch ? "Có chấm" : "Chưa chấm"}
                   </span>
@@ -444,9 +443,8 @@ function LateMetric({
 }) {
   return (
     <div
-      className={`rounded-lg border px-3 py-3 ${
-        tone === "danger" ? "border-rose-200 bg-rose-50 text-rose-800" : "border-border bg-muted/30 text-foreground"
-      }`}
+      className={`rounded-lg border px-3 py-3 ${tone === "danger" ? "border-rose-200 bg-rose-50 text-rose-800" : "border-border bg-muted/30 text-foreground"
+        }`}
     >
       <p className="text-xs font-semibold text-muted-foreground">{label}</p>
       <p className="mt-1 text-base font-bold tabular-nums">{value}</p>

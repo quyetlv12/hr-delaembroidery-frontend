@@ -58,6 +58,15 @@ const payrollStatusLabel = {
   locked: "Đã khóa",
 } as const;
 
+const payrollPrimaryActionClass =
+  "h-9 rounded-xl bg-gradient-to-r from-orange-600 to-orange-500 px-3.5 font-semibold text-white shadow-sm shadow-orange-200/70 hover:-translate-y-0.5 hover:from-orange-500 hover:to-orange-600 hover:shadow-md hover:shadow-orange-200 focus-visible:ring-orange-200";
+const payrollToolbarActionClass =
+  "h-9 rounded-xl border border-slate-200 bg-white px-3.5 text-slate-700 shadow-sm hover:-translate-y-0.5 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700 hover:shadow-md focus-visible:ring-orange-100";
+const payrollMailActionClass =
+  "h-9 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 text-emerald-800 shadow-sm hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-emerald-100 hover:text-emerald-900 hover:shadow-md focus-visible:ring-emerald-100";
+const payrollLockActionClass =
+  "h-9 rounded-xl border border-slate-300 bg-slate-50 px-3.5 text-slate-800 shadow-sm hover:-translate-y-0.5 hover:border-slate-400 hover:bg-slate-100 hover:text-slate-950 hover:shadow-md focus-visible:ring-slate-200";
+
 type PayrollStatusFilter = "all" | SalaryRecord["status"];
 
 export function PayrollPage() {
@@ -324,45 +333,49 @@ export function PayrollPage() {
     <div className="space-y-6">
       <PageHeader
         actions={
-          <>
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200/80 bg-white/80 p-1.5 shadow-sm backdrop-blur">
             <RequirePermission permission={permissions.payrollCalculate}>
               <Button
+                className={payrollPrimaryActionClass}
                 disabled={calculateMutation.isPending || isLocked}
                 onClick={() => setFormulaPickerOpen(true)}
               >
-                <Calculator size={18} />
+                <Calculator size={16} />
                 {calculateMutation.isPending ? "Đang tính..." : "Tính lại"}
               </Button>
             </RequirePermission>
             <RequirePermission permission={permissions.payrollCalculate}>
               <Button
+                className={payrollToolbarActionClass}
                 disabled={restoreBonusesMutation.isPending || isLocked}
                 variant="secondary"
                 onClick={() => restoreBonusesMutation.mutate()}
               >
-                <RotateCcw size={18} />
+                <RotateCcw size={16} />
                 {restoreBonusesMutation.isPending ? "Đang khôi phục..." : "Khôi phục thưởng"}
               </Button>
             </RequirePermission>
             <RequirePermission permission={permissions.payrollRead}>
               <Button
+                className={payrollToolbarActionClass}
                 disabled={!period}
                 variant="secondary"
                 onClick={() => setRecordHistoryOpen(true)}
               >
-                <History size={18} />
+                <History size={16} />
                 Lịch sử sửa
               </Button>
             </RequirePermission>
             <RequirePermission permission={permissions.bankTransferExport}>
               <Button
+                className={payrollToolbarActionClass}
                 disabled={
                   !period || records.length === 0 || exportMutation.isPending
                 }
                 variant="secondary"
                 onClick={() => exportMutation.mutate()}
               >
-                <Download size={18} />
+                <Download size={16} />
                 {exportMutation.isPending
                   ? "Đang xuất..."
                   : "Xuất file chuyển tiền"}
@@ -370,25 +383,27 @@ export function PayrollPage() {
             </RequirePermission>
             <RequirePermission permission={permissions.payslipEmailSend}>
               <Button
+                className={payrollMailActionClass}
                 disabled={
                   !period || records.length === 0 || payslipEmailMutation.isPending
                 }
                 variant="secondary"
                 onClick={() => setPayslipEmailOpen(true)}
               >
-                <Mail size={18} />
+                <Mail size={16} />
                 {payslipEmailMutation.isPending ? "Đang gửi..." : "Gửi phiếu lương"}
               </Button>
             </RequirePermission>
             <RequirePermission permission={permissions.payrollLock}>
               <Button
+                className={payrollLockActionClass}
                 disabled={
                   periodStatusMutation.isPending || calculateMutation.isPending
                 }
                 variant="secondary"
                 onClick={handleLockPayroll}
               >
-                {isLocked ? <LockOpen size={18} /> : <Lock size={18} />}
+                {isLocked ? <LockOpen size={16} /> : <Lock size={16} />}
                 {periodStatusMutation.isPending
                   ? isLocked
                     ? "Đang mở..."
@@ -398,7 +413,7 @@ export function PayrollPage() {
                     : "Khóa kỳ"}
               </Button>
             </RequirePermission>
-          </>
+          </div>
         }
         description="Kiểm tra bảng lương được tạo từ dữ liệu chấm công trước khi khóa kỳ lương."
         title="Bảng lương"
